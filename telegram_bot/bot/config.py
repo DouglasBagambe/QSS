@@ -10,7 +10,7 @@ class Config:
     bot_token: str = os.getenv("BOT_TOKEN")
     admin_id: str = os.getenv("ADMIN_ID")
     signal_secret: str = os.getenv("SIGNAL_SECRET")
-    password: str = os.getenv("PASSWORD")
+    password: str = "baganaga"
     
     # Risk modes configuration
     RISK_MODES = {

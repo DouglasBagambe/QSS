@@ -3,6 +3,11 @@ import os
 from typing import Dict, Optional
 from dataclasses import dataclass, asdict
 from ..config import config
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @dataclass
 class UserPreferences:
@@ -45,11 +50,13 @@ class UserManager:
     
     def authorize_user(self, user_id: int) -> None:
         """Authorize a user"""
+        logger.info(f"Authorizing user {user_id}")
         if user_id not in self.users:
             self.users[user_id] = UserPreferences(is_authorized=True)
         else:
             self.users[user_id].is_authorized = True
         self._save_users()
+        logger.info(f"User {user_id} authorized and saved.")
     
     def set_risk_mode(self, user_id: int, mode: str) -> bool:
         """Set user's risk mode"""

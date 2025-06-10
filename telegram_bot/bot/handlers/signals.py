@@ -1,5 +1,6 @@
 from aiogram import Router, Bot
 from aiogram.types import Message
+from aiogram.filters import Command
 from ..utils.user_manager import user_manager
 from ..config import config
 from datetime import datetime

@@ -20,17 +20,15 @@ class RiskStates(StatesGroup):
 @router.message(Command("start"))
 async def cmd_start(message: Message, state: FSMContext):
     """Handle /start command"""
-    await state.set_state(RiskStates.waiting_for_password)
     await message.answer(
-        "🔐 Welcome to the Trading Bot!\n"
-        "Please enter the password to continue:"
+        "🔐 Welcome to the Quantum SmartFlow Strategy (QSS) Trading Bot!",
+        reply_markup=get_main_menu()
     )
 
 @router.message(RiskStates.waiting_for_password)
 async def process_password(message: Message, state: FSMContext):
     """Process password input"""
     if message.text == config.password:
-        user_manager.authorize_user(message.from_user.id)
         await state.clear()
         await message.answer(
             "✅ Password correct! Welcome to the trading bot.",
