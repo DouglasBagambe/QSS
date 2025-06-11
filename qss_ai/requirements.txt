@@ -1,0 +1,12 @@
+ccxt==4.2.15
+pandas==2.2.1
+numpy==1.26.4
+python-telegram-bot==20.8
+python-dotenv==1.0.1
+schedule==1.2.1
+ta==0.11.0
+scikit-learn==1.4.1
+matplotlib==3.8.3
+plotly==5.19.0
+requests==2.31.0
+aiohttp==3.9.3 
