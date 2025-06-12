@@ -3,7 +3,7 @@
 //|                        Copyright 2025, Quantum SmartFlow Systems |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2025, Quantum SmartFlow Systems"
-#property link      "https://yoursite.com"
+#property link      ""
 #property version   "1.00"
 #property indicator_chart_window
 #property indicator_buffers 0
