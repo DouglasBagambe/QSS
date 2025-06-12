@@ -13,10 +13,11 @@ load_dotenv()
 
 @dataclass
 class Config:
+    # Required variables with defaults
     bot_token: str = os.getenv("BOT_TOKEN", "7868189425:AAEpPFleueIoIEEnXzP2zISDdTXCX9enD-g")
-    admin_id: str = os.getenv("ADMIN_ID", "123456789")  # Replace with your actual admin ID
-    signal_secret: str = os.getenv("SIGNAL_SECRET", "default_secret_key")
-    password: str = "baganaga"
+    admin_id: str = os.getenv("ADMIN_ID", "123456789")
+    signal_secret: str = os.getenv("SIGNAL_SECRET", "@BAganaga4")
+    password: str = os.getenv("PASSWORD", "baganaga")
     
     # Risk modes configuration
     RISK_MODES = {
@@ -40,24 +41,23 @@ class Config:
     MAX_SIGNALS_PER_HOUR = 12
     
     def __post_init__(self):
-        # Log configuration status
-        logger.info("Initializing configuration...")
-        
-        # Check for critical variables
-        if not self.bot_token:
-            logger.error("BOT_TOKEN is not set!")
-            raise ValueError("BOT_TOKEN is required")
+        try:
+            # Log configuration status
+            logger.info("Initializing configuration...")
             
-        if not self.admin_id:
-            logger.warning("ADMIN_ID is not set. Some features may be limited.")
+            # Create data directory if it doesn't exist
+            os.makedirs(os.path.dirname(self.USERS_FILE), exist_ok=True)
             
-        if not self.signal_secret:
-            logger.warning("SIGNAL_SECRET is not set. Using default value.")
+            # Log the configuration (excluding sensitive data)
+            logger.info(f"Bot Token: {'*' * len(self.bot_token)}")
+            logger.info(f"Admin ID: {self.admin_id}")
+            logger.info(f"Signal Secret: {'*' * len(self.signal_secret)}")
+            logger.info("Configuration initialized successfully")
             
-        # Create data directory if it doesn't exist
-        os.makedirs(os.path.dirname(self.USERS_FILE), exist_ok=True)
-        
-        logger.info("Configuration initialized successfully")
+        except Exception as e:
+            logger.error(f"Error during configuration initialization: {e}")
+            # Don't raise the error, just log it
+            pass
             
     def update_last_signal(self, signal_data: Dict[str, Any]):
         """Update the last signal data"""
@@ -69,4 +69,6 @@ try:
     logger.info("Configuration loaded successfully")
 except Exception as e:
     logger.error(f"Failed to initialize configuration: {e}")
-    raise 
+    # Create a default config if initialization fails
+    config = Config()
+    logger.info("Using default configuration") 
