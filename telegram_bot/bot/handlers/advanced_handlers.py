@@ -3,15 +3,18 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 from datetime import datetime
 import pytz
-from ..keyboards.main_menu import (
-    get_main_menu, get_trading_dashboard, get_settings_menu,
-    get_risk_mode_menu, get_pair_selection_menu, get_analysis_menu
+from bot.utils.market_analysis import get_market_overview, analyze_market
+from bot.utils.risk_calculator import RiskCalculator
+from bot.utils.performance_tracker import PerformanceTracker
+from bot.utils.ai_assistant import get_ai_insights
+from bot.keyboards.main_menu import (
+    get_main_menu,
+    get_risk_mode_keyboard,
+    get_settings_keyboard,
+    get_pair_selection_keyboard,
+    get_timeframe_keyboard
 )
 from ..config import Config
-from ..utils.market_analysis import analyze_market, get_market_overview
-from ..utils.risk_calculator import calculate_position_size, calculate_risk, RiskCalculator
-from ..utils.performance_tracker import get_performance_stats, PerformanceTracker
-from ..utils.ai_assistant import get_ai_insights
 
 router = Router()
 risk_calculator = RiskCalculator()
@@ -156,6 +159,20 @@ async def show_technical_analysis(callback: CallbackQuery):
     
     await callback.message.edit_text(message)
 
+@router.callback_query(F.data == "show_risk_mode")
+async def show_risk_mode(callback: CallbackQuery):
+    """Show risk mode selection"""
+    message = "🎯 Risk Mode Selection\n\n"
+    message += "Choose your preferred risk level:\n"
+    message += "• Conservative - 1% risk per trade\n"
+    message += "• Moderate - 2% risk per trade\n"
+    message += "• Aggressive - 3% risk per trade"
+    
+    await callback.message.edit_text(
+        message,
+        reply_markup=get_risk_mode_keyboard()
+    )
+
 @router.callback_query(F.data == "show_settings")
 async def show_settings(callback: CallbackQuery):
     """Show settings menu"""
@@ -167,18 +184,56 @@ async def show_settings(callback: CallbackQuery):
     message += "• Default Timeframe\n"
     message += "• Language"
     
-    await callback.message.edit_text(message)
+    await callback.message.edit_text(
+        message,
+        reply_markup=get_settings_keyboard()
+    )
 
-@router.callback_query(F.data == "show_risk_mode")
-async def show_risk_mode(callback: CallbackQuery):
-    """Show risk mode selection"""
-    message = "🎯 Risk Mode Selection\n\n"
-    message += "Choose your preferred risk level:\n"
-    message += "• Conservative - 1% risk per trade\n"
-    message += "• Moderate - 2% risk per trade\n"
-    message += "• Aggressive - 3% risk per trade"
+@router.callback_query(F.data == "show_main_menu")
+async def show_main_menu(callback: CallbackQuery):
+    """Show main menu"""
+    message = "🤖 Welcome to Quantum Smart Flow Strategy Bot\n\n"
+    message += "Select an option from the menu below:"
     
-    await callback.message.edit_text(message)
+    await callback.message.edit_text(
+        message,
+        reply_markup=get_main_menu()
+    )
+
+@router.callback_query(F.data.startswith("select_pair_"))
+async def select_pair(callback: CallbackQuery):
+    """Handle pair selection"""
+    pair = callback.data.replace("select_pair_", "")
+    message = f"Selected pair: {pair}\n\n"
+    message += "Please select a timeframe:"
+    
+    await callback.message.edit_text(
+        message,
+        reply_markup=get_timeframe_keyboard()
+    )
+
+@router.callback_query(F.data.startswith("select_timeframe_"))
+async def select_timeframe(callback: CallbackQuery):
+    """Handle timeframe selection"""
+    timeframe = callback.data.replace("select_timeframe_", "")
+    message = f"Selected timeframe: {timeframe}\n\n"
+    message += "Analyzing market conditions..."
+    
+    market_analysis = await analyze_market()
+    
+    message += f"\n\nMarket Structure:\n"
+    message += f"{market_analysis['structure']}\n\n"
+    message += f"Key Levels:\n"
+    message += f"{market_analysis['levels']}\n\n"
+    message += f"Technical Indicators:\n"
+    message += f"{market_analysis['indicators']}\n\n"
+    message += f"Chart Patterns:\n"
+    message += f"{market_analysis['patterns']}"
+    
+    await callback.message.edit_text(
+        message,
+        reply_markup=get_main_menu()
+    )
 
 @router.callback_query(F.data.startswith("set_risk_mode_"))
 async def set_risk_mode(callback: CallbackQuery):
