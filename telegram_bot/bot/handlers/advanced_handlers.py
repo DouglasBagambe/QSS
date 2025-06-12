@@ -1,7 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
 from ..keyboards.main_menu import (
     get_main_menu, get_trading_dashboard, get_settings_menu,
@@ -9,169 +9,187 @@ from ..keyboards.main_menu import (
 )
 from ..config import Config
 from ..utils.market_analysis import analyze_market, get_market_overview
-from ..utils.risk_calculator import calculate_position_size, calculate_risk
-from ..utils.performance_tracker import get_performance_stats
+from ..utils.risk_calculator import calculate_position_size, calculate_risk, RiskCalculator
+from ..utils.performance_tracker import get_performance_stats, PerformanceTracker
 from ..utils.ai_assistant import get_ai_insights
 
 router = Router()
+risk_calculator = RiskCalculator()
+performance_tracker = PerformanceTracker()
 
-@router.callback_query(F.data == "trading_dashboard")
+@router.callback_query(F.data == "show_trading_dashboard")
 async def show_trading_dashboard(callback: CallbackQuery):
-    """Show the trading dashboard with market overview and portfolio"""
-    await callback.message.edit_text(
-        "📊 *Trading Dashboard*\n\n"
-        "Select an option to view detailed information:",
-        reply_markup=get_trading_dashboard(),
-        parse_mode="Markdown"
-    )
+    """Show the trading dashboard"""
+    market_overview = await get_market_overview()
+    performance_stats = performance_tracker.get_performance_stats()
+    
+    message = "📊 Trading Dashboard\n\n"
+    message += f"Market Conditions:\n"
+    message += f"• {market_overview['conditions']}\n"
+    message += f"• Active Sessions: {market_overview['sessions']}\n"
+    message += f"• {market_overview['volatility']}\n\n"
+    
+    message += f"Performance Stats:\n"
+    message += f"• Total Trades: {performance_stats['total_trades']}\n"
+    message += f"• Win Rate: {performance_stats['win_rate']:.1%}\n"
+    message += f"• Profit Factor: {performance_stats['profit_factor']:.2f}\n"
+    message += f"• Total Profit: ${performance_stats['total_profit']:.2f}\n"
+    
+    await callback.message.edit_text(message)
 
-@router.callback_query(F.data == "market_overview")
+@router.callback_query(F.data == "show_market_overview")
 async def show_market_overview(callback: CallbackQuery):
-    """Show market overview with current market conditions"""
-    overview = await get_market_overview()
-    await callback.message.edit_text(
-        f"🌍 *Market Overview*\n\n"
-        f"*Current Market Conditions:*\n"
-        f"{overview['conditions']}\n\n"
-        f"*Active Sessions:*\n"
-        f"{overview['sessions']}\n\n"
-        f"*Market Volatility:*\n"
-        f"{overview['volatility']}\n\n"
-        f"*Key Events:*\n"
-        f"{overview['events']}",
-        reply_markup=get_trading_dashboard(),
-        parse_mode="Markdown"
-    )
+    """Show current market conditions"""
+    market_analysis = await analyze_market()
+    
+    message = "📈 Market Overview\n\n"
+    message += f"Market Structure:\n"
+    message += f"• {market_analysis['structure']}\n\n"
+    
+    message += f"Key Levels:\n"
+    message += f"{market_analysis['levels']}\n\n"
+    
+    message += f"Technical Indicators:\n"
+    message += f"{market_analysis['indicators']}\n\n"
+    
+    message += f"Chart Patterns:\n"
+    message += f"{market_analysis['patterns']}"
+    
+    await callback.message.edit_text(message)
 
-@router.callback_query(F.data == "risk_calculator")
+@router.callback_query(F.data == "show_risk_calculator")
 async def show_risk_calculator(callback: CallbackQuery):
-    """Show risk calculator interface"""
-    await callback.message.edit_text(
-        "💰 *Risk Calculator*\n\n"
-        "Please enter your account balance:",
-        reply_markup=get_trading_dashboard(),
-        parse_mode="Markdown"
-    )
+    """Show risk calculator prompt"""
+    message = "💰 Risk Calculator\n\n"
+    message += "Please enter your account balance to calculate position sizes."
+    
+    await callback.message.edit_text(message)
 
-@router.message(F.text.regexp(r'^\d+(\.\d+)?$'))
+@router.message(lambda message: message.text.isdigit())
 async def calculate_risk_from_balance(message: Message):
     """Calculate risk based on account balance"""
-    try:
-        balance = float(message.text)
-        risk_amount = calculate_risk(balance)
-        position_size = calculate_position_size(balance)
-        
-        await message.answer(
-            f"💰 *Risk Analysis*\n\n"
-            f"*Account Balance:* ${balance:,.2f}\n"
-            f"*Recommended Risk:* ${risk_amount:,.2f}\n"
-            f"*Position Size:* ${position_size:,.2f}\n\n"
-            f"*Risk Management Tips:*\n"
-            f"• Never risk more than 2% per trade\n"
-            f"• Use stop losses on every trade\n"
-            f"• Consider market volatility",
-            reply_markup=get_trading_dashboard(),
-            parse_mode="Markdown"
-        )
-    except ValueError:
-        await message.answer("Please enter a valid number.")
+    balance = float(message.text)
+    risk_calculation = risk_calculator.calculate_position_size(balance)
+    
+    response = "💰 Risk Calculation Results\n\n"
+    response += f"Account Balance: ${balance:,.2f}\n"
+    response += f"Risk Mode: {risk_calculation['risk_mode'].title()}\n\n"
+    
+    response += "Position Sizes:\n"
+    for lot_type, size in risk_calculation['position_sizes'].items():
+        response += f"• {lot_type.title()}: {size:.2f} lots\n"
+    
+    response += f"\nMax Open Trades: {risk_calculation['max_open_trades']}\n"
+    response += f"Stop Loss: {risk_calculation['stop_loss_pips']} pips\n"
+    response += f"Max Daily Risk: ${risk_calculation['max_daily_risk']:,.2f}"
+    
+    await message.reply(response)
 
-@router.callback_query(F.data == "performance_stats")
+@router.callback_query(F.data == "show_performance_stats")
 async def show_performance_stats(callback: CallbackQuery):
-    """Show trading performance statistics"""
-    stats = await get_performance_stats()
-    await callback.message.edit_text(
-        f"📊 *Performance Statistics*\n\n"
-        f"*Overall Performance:*\n"
-        f"Win Rate: {stats['win_rate']}%\n"
-        f"Total Trades: {stats['total_trades']}\n"
-        f"Profit Factor: {stats['profit_factor']}\n\n"
-        f"*Monthly Performance:*\n"
-        f"Current Month: {stats['current_month']}\n"
-        f"Last Month: {stats['last_month']}\n\n"
-        f"*Best Performing Pairs:*\n"
-        f"{stats['best_pairs']}\n\n"
-        f"*Risk Metrics:*\n"
-        f"Average Risk: {stats['avg_risk']}%\n"
-        f"Max Drawdown: {stats['max_drawdown']}%",
-        reply_markup=get_main_menu(),
-        parse_mode="Markdown"
-    )
+    """Show performance statistics"""
+    stats = performance_tracker.get_performance_stats()
+    
+    message = "📊 Performance Statistics\n\n"
+    message += f"Trading Activity:\n"
+    message += f"• Total Trades: {stats['total_trades']}\n"
+    message += f"• Winning Trades: {stats['winning_trades']}\n"
+    message += f"• Losing Trades: {stats['losing_trades']}\n"
+    message += f"• Win Rate: {stats['win_rate']:.1%}\n\n"
+    
+    message += f"Profitability:\n"
+    message += f"• Average Profit: ${stats['average_profit']:.2f}\n"
+    message += f"• Average Loss: ${stats['average_loss']:.2f}\n"
+    message += f"• Profit Factor: {stats['profit_factor']:.2f}\n"
+    message += f"• Total Profit: ${stats['total_profit']:.2f}\n\n"
+    
+    message += f"Risk Metrics:\n"
+    message += f"• Max Drawdown: ${stats['max_drawdown']:.2f}\n"
+    message += f"• Sharpe Ratio: {stats['sharpe_ratio']:.2f}"
+    
+    await callback.message.edit_text(message)
 
-@router.callback_query(F.data == "ai_assistant")
+@router.callback_query(F.data == "show_ai_assistant")
 async def show_ai_assistant(callback: CallbackQuery):
-    """Show AI assistant interface"""
+    """Show AI trading assistant insights"""
     insights = await get_ai_insights()
-    await callback.message.edit_text(
-        f"🤖 *AI Trading Assistant*\n\n"
-        f"*Market Insights:*\n"
-        f"{insights['market_analysis']}\n\n"
-        f"*Trading Opportunities:*\n"
-        f"{insights['opportunities']}\n\n"
-        f"*Risk Assessment:*\n"
-        f"{insights['risk_assessment']}\n\n"
-        f"*Recommendations:*\n"
-        f"{insights['recommendations']}",
-        reply_markup=get_main_menu(),
-        parse_mode="Markdown"
-    )
+    
+    message = "🤖 AI Trading Assistant\n\n"
+    message += f"Market Conditions:\n"
+    message += f"• Phase: {insights['market_conditions']['market_phase']}\n"
+    message += f"• Sentiment: {insights['market_conditions']['sentiment']}\n"
+    message += f"• Volatility: {insights['market_conditions']['volatility']}\n\n"
+    
+    message += f"Trading Opportunities:\n"
+    for opp in insights['trading_opportunities']:
+        message += f"• {opp['pair']} {opp['direction']}\n"
+        message += f"  Entry: {opp['entry']}\n"
+        message += f"  SL: {opp['stop_loss']}\n"
+        message += f"  TP: {opp['take_profit']}\n"
+        message += f"  Confidence: {opp['confidence']}\n\n"
+    
+    message += f"Risk Assessment:\n"
+    message += f"• Overall Risk: {insights['risk_assessment']['overall_risk']}\n"
+    message += f"• Risk Factors:\n"
+    for factor in insights['risk_assessment']['risk_factors']:
+        message += f"  - {factor}\n"
+    
+    await callback.message.edit_text(message)
 
-@router.callback_query(F.data == "analysis_technical")
+@router.callback_query(F.data == "show_technical_analysis")
 async def show_technical_analysis(callback: CallbackQuery):
     """Show technical analysis for selected pairs"""
-    analysis = await analyze_market()
-    await callback.message.edit_text(
-        f"📊 *Technical Analysis*\n\n"
-        f"*Market Structure:*\n"
-        f"{analysis['structure']}\n\n"
-        f"*Key Levels:*\n"
-        f"{analysis['levels']}\n\n"
-        f"*Indicators:*\n"
-        f"{analysis['indicators']}\n\n"
-        f"*Patterns:*\n"
-        f"{analysis['patterns']}",
-        reply_markup=get_analysis_menu(),
-        parse_mode="Markdown"
-    )
+    market_analysis = await analyze_market()
+    
+    message = "📊 Technical Analysis\n\n"
+    message += f"Market Structure:\n"
+    message += f"{market_analysis['structure']}\n\n"
+    
+    message += f"Key Levels:\n"
+    message += f"{market_analysis['levels']}\n\n"
+    
+    message += f"Technical Indicators:\n"
+    message += f"{market_analysis['indicators']}\n\n"
+    
+    message += f"Chart Patterns:\n"
+    message += f"{market_analysis['patterns']}"
+    
+    await callback.message.edit_text(message)
 
-@router.callback_query(F.data == "settings")
+@router.callback_query(F.data == "show_settings")
 async def show_settings(callback: CallbackQuery):
     """Show settings menu"""
-    await callback.message.edit_text(
-        "⚙️ *Settings*\n\n"
-        "Configure your trading preferences:",
-        reply_markup=get_settings_menu(),
-        parse_mode="Markdown"
-    )
+    message = "⚙️ Settings\n\n"
+    message += "Select an option to configure:\n"
+    message += "• Risk Mode\n"
+    message += "• Notification Preferences\n"
+    message += "• Trading Hours\n"
+    message += "• Default Timeframe\n"
+    message += "• Language"
+    
+    await callback.message.edit_text(message)
 
-@router.callback_query(F.data == "risk_mode")
+@router.callback_query(F.data == "show_risk_mode")
 async def show_risk_mode(callback: CallbackQuery):
     """Show risk mode selection"""
-    await callback.message.edit_text(
-        "🎯 *Risk Mode Selection*\n\n"
-        "Choose your preferred risk level:",
-        reply_markup=get_risk_mode_menu(),
-        parse_mode="Markdown"
-    )
-
-@router.callback_query(F.data.startswith("risk_"))
-async def set_risk_mode(callback: CallbackQuery):
-    """Set risk mode based on selection"""
-    risk_mode = callback.data.split("_")[1]
-    risk_percentages = {
-        "aggressive": 2.0,
-        "balanced": 1.0,
-        "conservative": 0.5
-    }
+    message = "🎯 Risk Mode Selection\n\n"
+    message += "Choose your preferred risk level:\n"
+    message += "• Conservative - 1% risk per trade\n"
+    message += "• Moderate - 2% risk per trade\n"
+    message += "• Aggressive - 3% risk per trade"
     
-    risk_percentage = risk_percentages.get(risk_mode, 1.0)
-    await callback.message.edit_text(
-        f"✅ *Risk Mode Updated*\n\n"
-        f"Your risk level has been set to {risk_percentage}% per trade.\n\n"
-        f"*Risk Management Guidelines:*\n"
-        f"• Maximum risk per trade: {risk_percentage}%\n"
-        f"• Use appropriate stop losses\n"
-        f"• Monitor market conditions",
-        reply_markup=get_settings_menu(),
-        parse_mode="Markdown"
-    ) 
+    await callback.message.edit_text(message)
+
+@router.callback_query(F.data.startswith("set_risk_mode_"))
+async def set_risk_mode(callback: CallbackQuery):
+    """Set risk mode"""
+    risk_mode = callback.data.replace("set_risk_mode_", "")
+    guidelines = risk_calculator.get_risk_guidelines(risk_mode)
+    
+    message = f"🎯 {risk_mode.title()} Risk Mode Selected\n\n"
+    message += f"{guidelines['description']}\n\n"
+    message += "Guidelines:\n"
+    for guideline in guidelines['guidelines']:
+        message += f"• {guideline}\n"
+    
+    await callback.message.edit_text(message) 

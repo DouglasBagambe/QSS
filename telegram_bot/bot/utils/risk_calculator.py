@@ -1,6 +1,99 @@
 from typing import Dict, Any
 from decimal import Decimal
 
+class RiskCalculator:
+    def __init__(self):
+        self.risk_modes = {
+            "conservative": {
+                "max_risk_per_trade": Decimal("0.01"),  # 1%
+                "max_daily_risk": Decimal("0.03"),      # 3%
+                "max_open_trades": 3,
+                "stop_loss_pips": 50
+            },
+            "moderate": {
+                "max_risk_per_trade": Decimal("0.02"),  # 2%
+                "max_daily_risk": Decimal("0.05"),      # 5%
+                "max_open_trades": 5,
+                "stop_loss_pips": 75
+            },
+            "aggressive": {
+                "max_risk_per_trade": Decimal("0.03"),  # 3%
+                "max_daily_risk": Decimal("0.08"),      # 8%
+                "max_open_trades": 8,
+                "stop_loss_pips": 100
+            }
+        }
+    
+    def calculate_position_size(self, account_balance: float, risk_mode: str = "moderate") -> Dict[str, Any]:
+        """Calculate position size based on account balance and risk mode"""
+        if risk_mode not in self.risk_modes:
+            risk_mode = "moderate"
+        
+        risk_params = self.risk_modes[risk_mode]
+        balance = Decimal(str(account_balance))
+        
+        # Calculate maximum risk amount
+        max_risk_amount = balance * risk_params["max_risk_per_trade"]
+        
+        # Calculate position sizes for different lot sizes
+        position_sizes = {
+            "micro": float(max_risk_amount / Decimal("1000")),  # 0.01 lots
+            "mini": float(max_risk_amount / Decimal("10000")),  # 0.1 lots
+            "standard": float(max_risk_amount / Decimal("100000"))  # 1.0 lots
+        }
+        
+        return {
+            "risk_mode": risk_mode,
+            "max_risk_amount": float(max_risk_amount),
+            "position_sizes": position_sizes,
+            "max_open_trades": risk_params["max_open_trades"],
+            "stop_loss_pips": risk_params["stop_loss_pips"],
+            "max_daily_risk": float(balance * risk_params["max_daily_risk"])
+        }
+    
+    def get_risk_guidelines(self, risk_mode: str = "moderate") -> Dict[str, str]:
+        """Get risk management guidelines for the selected mode"""
+        if risk_mode not in self.risk_modes:
+            risk_mode = "moderate"
+        
+        guidelines = {
+            "conservative": {
+                "description": "Conservative risk management for capital preservation",
+                "guidelines": [
+                    "Maximum 1% risk per trade",
+                    "Maximum 3% daily risk",
+                    "Maximum 3 open trades",
+                    "50 pip stop loss",
+                    "Focus on high-probability setups only",
+                    "Strict entry and exit rules"
+                ]
+            },
+            "moderate": {
+                "description": "Balanced risk management for steady growth",
+                "guidelines": [
+                    "Maximum 2% risk per trade",
+                    "Maximum 5% daily risk",
+                    "Maximum 5 open trades",
+                    "75 pip stop loss",
+                    "Mix of high and medium probability setups",
+                    "Flexible entry and exit rules"
+                ]
+            },
+            "aggressive": {
+                "description": "Aggressive risk management for maximum growth",
+                "guidelines": [
+                    "Maximum 3% risk per trade",
+                    "Maximum 8% daily risk",
+                    "Maximum 8 open trades",
+                    "100 pip stop loss",
+                    "Takes advantage of all valid setups",
+                    "Dynamic entry and exit rules"
+                ]
+            }
+        }
+        
+        return guidelines[risk_mode]
+
 def calculate_risk(balance: float, risk_percentage: float = 1.0) -> float:
     """Calculate risk amount based on account balance and risk percentage"""
     return balance * (risk_percentage / 100)

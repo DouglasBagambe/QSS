@@ -2,34 +2,118 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeybo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 def get_main_menu() -> InlineKeyboardMarkup:
-    """Create the main menu keyboard"""
-    builder = InlineKeyboardBuilder()
-    
-    # Trading Section
-    builder.row(
-        InlineKeyboardButton(text="📊 Trading Dashboard", callback_data="trading_dashboard"),
-        InlineKeyboardButton(text="🎯 Active Signals", callback_data="active_signals")
+    """Get the main menu keyboard"""
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="📊 Trading Dashboard", callback_data="show_trading_dashboard"),
+                InlineKeyboardButton(text="📈 Market Overview", callback_data="show_market_overview")
+            ],
+            [
+                InlineKeyboardButton(text="💰 Risk Calculator", callback_data="show_risk_calculator"),
+                InlineKeyboardButton(text="📊 Performance Stats", callback_data="show_performance_stats")
+            ],
+            [
+                InlineKeyboardButton(text="🤖 AI Assistant", callback_data="show_ai_assistant"),
+                InlineKeyboardButton(text="📊 Technical Analysis", callback_data="show_technical_analysis")
+            ],
+            [
+                InlineKeyboardButton(text="⚙️ Settings", callback_data="show_settings"),
+                InlineKeyboardButton(text="🎯 Risk Mode", callback_data="show_risk_mode")
+            ]
+        ]
     )
-    
-    # Analysis Section
-    builder.row(
-        InlineKeyboardButton(text="📈 Market Analysis", callback_data="market_analysis"),
-        InlineKeyboardButton(text="🔍 Pair Scanner", callback_data="pair_scanner")
+    return keyboard
+
+def get_risk_mode_keyboard() -> InlineKeyboardMarkup:
+    """Get the risk mode selection keyboard"""
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Conservative", callback_data="set_risk_mode_conservative"),
+                InlineKeyboardButton(text="Moderate", callback_data="set_risk_mode_moderate")
+            ],
+            [
+                InlineKeyboardButton(text="Aggressive", callback_data="set_risk_mode_aggressive")
+            ],
+            [
+                InlineKeyboardButton(text="« Back to Main Menu", callback_data="show_main_menu")
+            ]
+        ]
     )
-    
-    # Settings Section
-    builder.row(
-        InlineKeyboardButton(text="⚙️ Settings", callback_data="settings"),
-        InlineKeyboardButton(text="📱 Notifications", callback_data="notifications")
+    return keyboard
+
+def get_settings_keyboard() -> InlineKeyboardMarkup:
+    """Get the settings menu keyboard"""
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Risk Mode", callback_data="show_risk_mode"),
+                InlineKeyboardButton(text="Notifications", callback_data="show_notifications")
+            ],
+            [
+                InlineKeyboardButton(text="Trading Hours", callback_data="show_trading_hours"),
+                InlineKeyboardButton(text="Timeframe", callback_data="show_timeframe")
+            ],
+            [
+                InlineKeyboardButton(text="Language", callback_data="show_language"),
+                InlineKeyboardButton(text="Backup", callback_data="show_backup")
+            ],
+            [
+                InlineKeyboardButton(text="« Back to Main Menu", callback_data="show_main_menu")
+            ]
+        ]
     )
-    
-    # Advanced Features
-    builder.row(
-        InlineKeyboardButton(text="🤖 AI Assistant", callback_data="ai_assistant"),
-        InlineKeyboardButton(text="📊 Performance Stats", callback_data="performance_stats")
+    return keyboard
+
+def get_pair_selection_keyboard() -> InlineKeyboardMarkup:
+    """Get the trading pair selection keyboard"""
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="EUR/USD", callback_data="select_pair_EURUSD"),
+                InlineKeyboardButton(text="GBP/USD", callback_data="select_pair_GBPUSD")
+            ],
+            [
+                InlineKeyboardButton(text="USD/JPY", callback_data="select_pair_USDJPY"),
+                InlineKeyboardButton(text="USD/CHF", callback_data="select_pair_USDCHF")
+            ],
+            [
+                InlineKeyboardButton(text="AUD/USD", callback_data="select_pair_AUDUSD"),
+                InlineKeyboardButton(text="USD/CAD", callback_data="select_pair_USDCAD")
+            ],
+            [
+                InlineKeyboardButton(text="« Back to Main Menu", callback_data="show_main_menu")
+            ]
+        ]
     )
-    
-    return builder.as_markup()
+    return keyboard
+
+def get_timeframe_keyboard() -> InlineKeyboardMarkup:
+    """Get the timeframe selection keyboard"""
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="M1", callback_data="select_timeframe_M1"),
+                InlineKeyboardButton(text="M5", callback_data="select_timeframe_M5"),
+                InlineKeyboardButton(text="M15", callback_data="select_timeframe_M15")
+            ],
+            [
+                InlineKeyboardButton(text="M30", callback_data="select_timeframe_M30"),
+                InlineKeyboardButton(text="H1", callback_data="select_timeframe_H1"),
+                InlineKeyboardButton(text="H4", callback_data="select_timeframe_H4")
+            ],
+            [
+                InlineKeyboardButton(text="D1", callback_data="select_timeframe_D1"),
+                InlineKeyboardButton(text="W1", callback_data="select_timeframe_W1"),
+                InlineKeyboardButton(text="MN", callback_data="select_timeframe_MN")
+            ],
+            [
+                InlineKeyboardButton(text="« Back to Settings", callback_data="show_settings")
+            ]
+        ]
+    )
+    return keyboard
 
 def get_trading_dashboard() -> InlineKeyboardMarkup:
     """Create the trading dashboard keyboard"""
@@ -82,17 +166,6 @@ def get_settings_menu() -> InlineKeyboardMarkup:
     
     # Back Button
     builder.row(InlineKeyboardButton(text="« Back to Main Menu", callback_data="main_menu"))
-    
-    return builder.as_markup()
-
-def get_risk_mode_menu() -> InlineKeyboardMarkup:
-    """Create the risk mode selection keyboard"""
-    builder = InlineKeyboardBuilder()
-    
-    builder.row(InlineKeyboardButton(text="🚀 Aggressive (2% Risk)", callback_data="risk_aggressive"))
-    builder.row(InlineKeyboardButton(text="⚖️ Balanced (1% Risk)", callback_data="risk_balanced"))
-    builder.row(InlineKeyboardButton(text="🛡️ Conservative (0.5% Risk)", callback_data="risk_conservative"))
-    builder.row(InlineKeyboardButton(text="« Back to Settings", callback_data="settings"))
     
     return builder.as_markup()
 

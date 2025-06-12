@@ -19,25 +19,30 @@ class PerformanceTracker:
         if not self.stats_file.exists():
             self.stats_file.write_text("{}")
     
-    def add_trade(self, pair: str, entry_price: float, exit_price: float,
-                  position_size: float, pnl: float, timestamp: datetime = None):
-        """Add a new trade to the tracker"""
-        if timestamp is None:
-            timestamp = datetime.now()
-        
-        trade = {
-            "pair": pair,
-            "entry_price": entry_price,
-            "exit_price": exit_price,
-            "position_size": position_size,
-            "pnl": pnl,
-            "timestamp": timestamp.isoformat()
-        }
-        
+    def add_trade(self, trade_data: Dict[str, Any]):
+        """Add a new trade to the history"""
         trades = self._load_trades()
-        trades.append(trade)
+        trade_data["timestamp"] = datetime.now().isoformat()
+        trades.append(trade_data)
         self._save_trades(trades)
         self._update_stats()
+    
+    def get_trade_history(self, days: int = 30) -> List[Dict[str, Any]]:
+        """Get trade history for the specified number of days"""
+        trades = self._load_trades()
+        cutoff_date = datetime.now() - timedelta(days=days)
+        return [
+            trade for trade in trades
+            if datetime.fromisoformat(trade["timestamp"]) > cutoff_date
+        ]
+    
+    def get_performance_stats(self) -> Dict[str, Any]:
+        """Get current performance statistics"""
+        stats = self._load_stats()
+        if not stats:
+            stats = self._calculate_stats()
+            self._save_stats(stats)
+        return stats
     
     def _load_trades(self) -> List[Dict[str, Any]]:
         """Load trades from file"""
@@ -47,86 +52,82 @@ class PerformanceTracker:
         """Save trades to file"""
         self.trades_file.write_text(json.dumps(trades, indent=2))
     
-    def _update_stats(self):
-        """Update performance statistics"""
-        trades = self._load_trades()
-        stats = {
-            "total_trades": len(trades),
-            "winning_trades": sum(1 for t in trades if t["pnl"] > 0),
-            "losing_trades": sum(1 for t in trades if t["pnl"] < 0),
-            "total_pnl": sum(t["pnl"] for t in trades),
-            "best_trade": max((t["pnl"] for t in trades), default=0),
-            "worst_trade": min((t["pnl"] for t in trades), default=0),
-            "average_trade": sum(t["pnl"] for t in trades) / len(trades) if trades else 0,
-            "win_rate": sum(1 for t in trades if t["pnl"] > 0) / len(trades) * 100 if trades else 0,
-            "pair_performance": self._calculate_pair_performance(trades),
-            "monthly_performance": self._calculate_monthly_performance(trades)
-        }
-        self.stats_file.write_text(json.dumps(stats, indent=2))
-    
-    def _calculate_pair_performance(self, trades: List[Dict[str, Any]]) -> Dict[str, float]:
-        """Calculate performance by trading pair"""
-        pair_pnl = {}
-        for trade in trades:
-            pair = trade["pair"]
-            if pair not in pair_pnl:
-                pair_pnl[pair] = 0
-            pair_pnl[pair] += trade["pnl"]
-        return pair_pnl
-    
-    def _calculate_monthly_performance(self, trades: List[Dict[str, Any]]) -> Dict[str, float]:
-        """Calculate performance by month"""
-        monthly_pnl = {}
-        for trade in trades:
-            timestamp = datetime.fromisoformat(trade["timestamp"])
-            month_key = timestamp.strftime("%Y-%m")
-            if month_key not in monthly_pnl:
-                monthly_pnl[month_key] = 0
-            monthly_pnl[month_key] += trade["pnl"]
-        return monthly_pnl
-    
-    def get_performance_stats(self) -> Dict[str, Any]:
-        """Get current performance statistics"""
-        if not self.stats_file.exists():
-            return {}
+    def _load_stats(self) -> Dict[str, Any]:
+        """Load stats from file"""
         return json.loads(self.stats_file.read_text())
     
-    def get_recent_trades(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get most recent trades"""
+    def _save_stats(self, stats: Dict[str, Any]):
+        """Save stats to file"""
+        self.stats_file.write_text(json.dumps(stats, indent=2))
+    
+    def _update_stats(self):
+        """Update performance statistics"""
+        stats = self._calculate_stats()
+        self._save_stats(stats)
+    
+    def _calculate_stats(self) -> Dict[str, Any]:
+        """Calculate performance statistics from trade history"""
         trades = self._load_trades()
-        return sorted(trades, key=lambda x: x["timestamp"], reverse=True)[:limit]
-    
-    def get_pair_stats(self, pair: str) -> Dict[str, Any]:
-        """Get statistics for a specific pair"""
-        trades = [t for t in self._load_trades() if t["pair"] == pair]
         if not trades:
-            return {}
+            return {
+                "total_trades": 0,
+                "winning_trades": 0,
+                "losing_trades": 0,
+                "win_rate": 0.0,
+                "average_profit": 0.0,
+                "average_loss": 0.0,
+                "profit_factor": 0.0,
+                "total_profit": 0.0,
+                "max_drawdown": 0.0,
+                "sharpe_ratio": 0.0
+            }
+        
+        winning_trades = [t for t in trades if t.get("profit", 0) > 0]
+        losing_trades = [t for t in trades if t.get("profit", 0) <= 0]
+        
+        total_profit = sum(t.get("profit", 0) for t in winning_trades)
+        total_loss = abs(sum(t.get("profit", 0) for t in losing_trades))
         
         return {
             "total_trades": len(trades),
-            "winning_trades": sum(1 for t in trades if t["pnl"] > 0),
-            "total_pnl": sum(t["pnl"] for t in trades),
-            "win_rate": sum(1 for t in trades if t["pnl"] > 0) / len(trades) * 100,
-            "average_trade": sum(t["pnl"] for t in trades) / len(trades)
+            "winning_trades": len(winning_trades),
+            "losing_trades": len(losing_trades),
+            "win_rate": len(winning_trades) / len(trades) if trades else 0.0,
+            "average_profit": total_profit / len(winning_trades) if winning_trades else 0.0,
+            "average_loss": total_loss / len(losing_trades) if losing_trades else 0.0,
+            "profit_factor": total_profit / total_loss if total_loss else float("inf"),
+            "total_profit": total_profit - total_loss,
+            "max_drawdown": self._calculate_max_drawdown(trades),
+            "sharpe_ratio": self._calculate_sharpe_ratio(trades)
         }
     
-    def get_monthly_stats(self, year: int, month: int) -> Dict[str, Any]:
-        """Get statistics for a specific month"""
-        trades = [
-            t for t in self._load_trades()
-            if datetime.fromisoformat(t["timestamp"]).year == year
-            and datetime.fromisoformat(t["timestamp"]).month == month
-        ]
+    def _calculate_max_drawdown(self, trades: List[Dict[str, Any]]) -> float:
+        """Calculate maximum drawdown from trade history"""
         if not trades:
-            return {}
+            return 0.0
         
-        return {
-            "total_trades": len(trades),
-            "winning_trades": sum(1 for t in trades if t["pnl"] > 0),
-            "total_pnl": sum(t["pnl"] for t in trades),
-            "win_rate": sum(1 for t in trades if t["pnl"] > 0) / len(trades) * 100,
-            "average_trade": sum(t["pnl"] for t in trades) / len(trades)
-        }
+        balance = 0.0
+        peak = 0.0
+        max_drawdown = 0.0
+        
+        for trade in trades:
+            balance += trade.get("profit", 0)
+            peak = max(peak, balance)
+            drawdown = peak - balance
+            max_drawdown = max(max_drawdown, drawdown)
+        
+        return max_drawdown
+    
+    def _calculate_sharpe_ratio(self, trades: List[Dict[str, Any]]) -> float:
+        """Calculate Sharpe ratio from trade history"""
+        if not trades:
+            return 0.0
+        
+        returns = [t.get("profit", 0) for t in trades]
+        avg_return = sum(returns) / len(returns)
+        std_dev = (sum((r - avg_return) ** 2 for r in returns) / len(returns)) ** 0.5
+        
+        return avg_return / std_dev if std_dev else 0.0
 
 async def get_performance_stats() -> Dict[str, Any]:
     """Get formatted performance statistics for display"""

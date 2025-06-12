@@ -3,9 +3,9 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import Message
-from .config import Config
-from .keyboards.main_menu import get_main_menu
-from .handlers import (
+
+from bot.config import Config
+from bot.handlers import (
     start_handler,
     help_handler,
     settings_handler,
@@ -21,17 +21,20 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 async def main():
-    """Main function to run the bot"""
+    """Main function to start the bot"""
     try:
         # Initialize bot and dispatcher
-        bot = Bot(token=Config.bot_token)
+        config = Config()
+        bot = Bot(token=config.bot_token)
         dp = Dispatcher()
         
         # Register handlers
-        dp.include_router(start_handler.router)
-        dp.include_router(help_handler.router)
-        dp.include_router(settings_handler.router)
-        dp.include_router(signals_handler.router)
+        dp.message.register(start_handler, Command(commands=["start"]))
+        dp.message.register(help_handler, Command(commands=["help"]))
+        dp.message.register(settings_handler, Command(commands=["settings"]))
+        dp.message.register(signals_handler, Command(commands=["signals"]))
+        
+        # Register advanced handlers
         dp.include_router(advanced_handlers.router)
         
         # Start polling
