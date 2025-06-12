@@ -2,14 +2,20 @@ from dataclasses import dataclass
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 import os
+import logging
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Load environment variables
 load_dotenv()
 
 @dataclass
 class Config:
-    bot_token: str = os.getenv("BOT_TOKEN")
-    admin_id: str = os.getenv("ADMIN_ID")
-    signal_secret: str = os.getenv("SIGNAL_SECRET")
+    bot_token: str = os.getenv("BOT_TOKEN", "7868189425:AAEpPFleueIoIEEnXzP2zISDdTXCX9enD-g")
+    admin_id: str = os.getenv("ADMIN_ID", "123456789")  # Replace with your actual admin ID
+    signal_secret: str = os.getenv("SIGNAL_SECRET", "default_secret_key")
     password: str = "baganaga"
     
     # Risk modes configuration
@@ -34,11 +40,33 @@ class Config:
     MAX_SIGNALS_PER_HOUR = 12
     
     def __post_init__(self):
-        if not all([self.bot_token, self.admin_id, self.signal_secret, self.password]):
-            raise ValueError("Missing required environment variables")
+        # Log configuration status
+        logger.info("Initializing configuration...")
+        
+        # Check for critical variables
+        if not self.bot_token:
+            logger.error("BOT_TOKEN is not set!")
+            raise ValueError("BOT_TOKEN is required")
+            
+        if not self.admin_id:
+            logger.warning("ADMIN_ID is not set. Some features may be limited.")
+            
+        if not self.signal_secret:
+            logger.warning("SIGNAL_SECRET is not set. Using default value.")
+            
+        # Create data directory if it doesn't exist
+        os.makedirs(os.path.dirname(self.USERS_FILE), exist_ok=True)
+        
+        logger.info("Configuration initialized successfully")
             
     def update_last_signal(self, signal_data: Dict[str, Any]):
         """Update the last signal data"""
         self.last_signal = signal_data
 
-config = Config() 
+# Initialize config
+try:
+    config = Config()
+    logger.info("Configuration loaded successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize configuration: {e}")
+    raise 
