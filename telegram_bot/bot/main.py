@@ -1,13 +1,17 @@
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher
-from aiogram.enums import ParseMode
-from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.client.default import DefaultBotProperties
-
-from .config import config
-from .middlewares.auth import AuthMiddleware
-from .handlers import commands, signals
+from aiogram.filters import Command
+from aiogram.types import Message
+from .config import Config
+from .keyboards.main_menu import get_main_menu
+from .handlers import (
+    start_handler,
+    help_handler,
+    settings_handler,
+    signals_handler,
+    advanced_handlers
+)
 
 # Configure logging
 logging.basicConfig(
@@ -17,25 +21,28 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 async def main():
-    # Initialize bot and dispatcher
-    bot = Bot(token=config.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-    storage = MemoryStorage()
-    dp = Dispatcher(storage=storage)
-    
-    # Register middlewares
-    dp.message.middleware(AuthMiddleware())
-    dp.callback_query.middleware(AuthMiddleware())
-    
-    # Register routers
-    dp.include_router(commands.router)
-    dp.include_router(signals.router)
-    
-    # Start polling
-    logger.info("Starting bot...")
-    await dp.start_polling(bot)
+    """Main function to run the bot"""
+    try:
+        # Initialize bot and dispatcher
+        bot = Bot(token=Config.bot_token)
+        dp = Dispatcher()
+        
+        # Register handlers
+        dp.include_router(start_handler.router)
+        dp.include_router(help_handler.router)
+        dp.include_router(settings_handler.router)
+        dp.include_router(signals_handler.router)
+        dp.include_router(advanced_handlers.router)
+        
+        # Start polling
+        logger.info("Starting bot...")
+        await dp.start_polling(bot)
+        
+    except Exception as e:
+        logger.error(f"Error starting bot: {e}")
+        raise
+    finally:
+        await bot.session.close()
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except (KeyboardInterrupt, SystemExit):
-        logger.info("Bot stopped!") 
+    asyncio.run(main()) 
