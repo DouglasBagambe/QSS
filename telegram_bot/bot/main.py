@@ -1,60 +1,83 @@
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher
+from aiogram.enums import ParseMode
 from aiogram.filters import Command
-from aiogram.types import BotCommand, BotCommandScopeDefault
-from bot.config import Config
-from bot.handlers.start_handler import router as start_router
-from bot.handlers.help_handler import router as help_router
-from bot.handlers.settings_handler import router as settings_router
-from bot.handlers.signals_handler import router as signals_router
-from bot.handlers.advanced_handlers import router as advanced_router
+from aiogram.types import Message
+from aiogram.utils.token import validate_token
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from aiohttp import web
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+from bot.config import Config
+from bot.handlers import (
+    register_handlers,
+    register_advanced_handlers,
+    register_webhook_handlers
+)
+from bot.middleware import register_middleware
+from bot.utils.logger import setup_logging
+
+# Initialize logging
+setup_logging()
 logger = logging.getLogger(__name__)
 
-async def setup_commands(bot: Bot):
-    """Setup bot commands in the menu"""
-    commands = [
-        BotCommand(command="start", description="Start the bot"),
-        BotCommand(command="help", description="Show help information"),
-        BotCommand(command="signals", description="View active trading signals"),
-        BotCommand(command="analysis", description="Get market analysis"),
-        BotCommand(command="settings", description="Configure bot settings"),
-        BotCommand(command="dashboard", description="View trading dashboard"),
-        BotCommand(command="trends", description="View market trends"),
-        BotCommand(command="news", description="Get market news"),
-        BotCommand(command="predictions", description="View AI predictions"),
-        BotCommand(command="performance", description="View trading performance")
-    ]
-    await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
+async def on_startup(bot: Bot) -> None:
+    """Actions to perform on bot startup"""
+    logger.info("Starting bot...")
+    
+    # Validate bot token
+    if not validate_token(Config.BOT_TOKEN):
+        logger.error("Invalid bot token!")
+        return
+    
+    # Set bot commands
+    await bot.set_my_commands([
+        {"command": "start", "description": "Start the bot"},
+        {"command": "help", "description": "Show help message"},
+        {"command": "settings", "description": "Configure bot settings"},
+        {"command": "dashboard", "description": "Show trading dashboard"},
+        {"command": "market", "description": "Show market overview"},
+        {"command": "risk", "description": "Show risk calculator"},
+        {"command": "stats", "description": "Show performance stats"},
+        {"command": "ai", "description": "Open AI assistant"},
+        {"command": "analysis", "description": "Show technical analysis"},
+        {"command": "signals", "description": "Show trading signals"}
+    ])
+    
+    logger.info("Bot started successfully!")
 
-async def main():
+async def on_shutdown(bot: Bot) -> None:
+    """Actions to perform on bot shutdown"""
+    logger.info("Shutting down bot...")
+    await bot.session.close()
+
+async def main() -> None:
     """Main function to start the bot"""
     try:
         # Initialize bot and dispatcher
-        bot = Bot(token=Config.bot_token)
+        bot = Bot(token=Config.BOT_TOKEN, parse_mode=ParseMode.HTML)
         dp = Dispatcher()
         
-        # Setup commands
-        await setup_commands(bot)
+        # Register handlers and middleware
+        register_handlers(dp)
+        register_advanced_handlers(dp)
+        register_webhook_handlers(dp)
+        register_middleware(dp)
         
-        # Register routers
-        dp.include_router(start_router)
-        dp.include_router(help_router)
-        dp.include_router(settings_router)
-        dp.include_router(signals_router)
-        dp.include_router(advanced_router)
+        # Register startup and shutdown handlers
+        dp.startup.register(on_startup)
+        dp.shutdown.register(on_shutdown)
         
         # Start polling
-        logger.info("Starting bot...")
+        logger.info("Starting polling...")
         await dp.start_polling(bot)
         
     except Exception as e:
-        logger.error(f"Error starting bot: {e}", exc_info=True)
-    finally:
-        await bot.session.close()
+        logger.error(f"Error starting bot: {e}")
+        raise
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Bot stopped!") 
