@@ -6,6 +6,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 from aiogram.utils.token import validate_token
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from aiogram.client.default import DefaultBotProperties
 from aiohttp import web
 import os
 
@@ -60,7 +61,10 @@ async def main() -> None:
     """Main function to start the bot"""
     try:
         # Initialize bot and dispatcher
-        bot = Bot(token=config.bot_token, parse_mode=ParseMode.HTML)
+        bot = Bot(
+            token=config.bot_token,
+            default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+        )
         dp = Dispatcher()
         
         # Register handlers and middleware
