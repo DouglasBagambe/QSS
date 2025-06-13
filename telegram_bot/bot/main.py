@@ -9,14 +9,14 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 from aiohttp import web
 import os
 
-from config import Config
-from handlers import (
+from .config import Config
+from .handlers import (
     register_handlers,
     register_advanced_handlers,
     register_webhook_handlers
 )
-from middleware import register_middleware
-from utils.logger import setup_logging
+from .middlewares.auth import register_middleware
+from .utils.logger import setup_logging
 
 # Initialize logging
 setup_logging()

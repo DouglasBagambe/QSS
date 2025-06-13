@@ -15,7 +15,7 @@ load_dotenv()
 class Config:
     # Required variables with defaults
     bot_token: str = os.getenv("BOT_TOKEN", "7868189425:AAEpPFleueIoIEEnXzP2zISDdTXCX9enD-g")
-    admin_id: str = os.getenv("ADMIN_ID", "123456789")  # Must be a numeric ID
+    admin_id: str = os.getenv("ADMIN_ID", "123456789")  # Must be a numeric ID or bot username
     signal_secret: str = os.getenv("SIGNAL_SECRET", "@BAganaga4")
     password: str = os.getenv("PASSWORD", "baganaga")
     
@@ -45,9 +45,9 @@ class Config:
             # Log configuration status
             logger.info("Initializing configuration...")
             
-            # Validate admin_id is numeric
-            if not self.admin_id.isdigit():
-                logger.warning(f"ADMIN_ID should be numeric, got: {self.admin_id}")
+            # Validate admin_id is numeric or bot username
+            if not self.admin_id.isdigit() and not self.admin_id.startswith("https://t.me/"):
+                logger.warning(f"ADMIN_ID should be numeric or bot URL, got: {self.admin_id}")
                 self.admin_id = "123456789"  # Fallback to default
             
             # Create data directory if it doesn't exist
@@ -76,4 +76,7 @@ except Exception as e:
     logger.error(f"Failed to initialize configuration: {e}")
     # Create a default config if initialization fails
     config = Config()
-    logger.info("Using default configuration") 
+    logger.info("Using default configuration")
+
+# Initialize and validate configuration
+Config.validate() 
