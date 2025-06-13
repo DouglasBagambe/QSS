@@ -17,6 +17,8 @@ int g_htf_handle;
 int g_ltf_handle;
 datetime g_lastAnalysisTime = 0;
 bool g_initialized = false;
+datetime g_lastUpdateTime = 0;
+int g_updateInterval = 300; // 5 minutes
 
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
@@ -117,7 +119,216 @@ int OnCalculate(const int rates_total,
    // Main analysis
    PerformMarketAnalysis();
    
+   // Send periodic market updates
+   if(TimeCurrent() - g_lastUpdateTime >= g_updateInterval)
+   {
+      SendMarketUpdate();
+      g_lastUpdateTime = TimeCurrent();
+   }
+   
+   // Draw advanced patterns
+   if(DrawVisuals)
+   {
+      DrawElliottWaves();
+      DrawHarmonicPatterns();
+      DrawDivergences();
+      DrawVolumeProfile();
+      DrawMarketProfile();
+      DrawOrderFlow();
+      DrawAdvancedPatterns();
+      DrawMarketStructure();
+   }
+   
    return rates_total;
+}
+
+//+------------------------------------------------------------------+
+//| Send market update to Telegram                                   |
+//+------------------------------------------------------------------+
+void SendMarketUpdate()
+{
+   if(!EnableTelegramAlerts) return;
+   
+   string update = "";
+   
+   // Market Structure
+   ENUM_SIGNAL_BIAS htf_bias = DetermineHTFBias();
+   bool choch_detected = DetectCHOCH();
+   bool bos_detected = DetectBOS();
+   
+   update += "📊 <b>Market Structure Update</b>\\n";
+   update += "• Bias: " + BiasToString(htf_bias) + "\\n";
+   if(choch_detected) update += "• CHOCH Detected\\n";
+   if(bos_detected) update += "• BOS Detected\\n";
+   
+   // Add market structure analysis
+   update += "• Market Structure: ";
+   if(IsInUptrend())
+      update += "Uptrend\\n";
+   else if(IsInDowntrend())
+      update += "Downtrend\\n";
+   else
+      update += "Sideways\\n";
+   
+   // Add key levels
+   double key_levels[];
+   GetKeyLevels(key_levels);
+   if(ArraySize(key_levels) > 0)
+   {
+      update += "• Key Levels:\\n";
+      for(int i = 0; i < ArraySize(key_levels); i++)
+      {
+         update += "  - " + DoubleToString(key_levels[i], _Digits) + "\\n";
+      }
+   }
+   
+   update += "\\n";
+   
+   // Active Zones
+   update += "🎯 <b>Active Zones</b>\\n";
+   for(int i = 0; i < ArraySize(g_orderBlocks); i++)
+   {
+      if(!g_orderBlocks[i].is_tested)
+      {
+         update += "• " + g_orderBlocks[i].description + "\\n";
+         update += "  Range: " + DoubleToString(g_orderBlocks[i].price_low, _Digits) + 
+                  " - " + DoubleToString(g_orderBlocks[i].price_high, _Digits) + "\\n";
+      }
+   }
+   for(int i = 0; i < ArraySize(g_fvgZones); i++)
+   {
+      if(!g_fvgZones[i].is_tested)
+      {
+         update += "• " + g_fvgZones[i].description + "\\n";
+         update += "  Range: " + DoubleToString(g_fvgZones[i].price_low, _Digits) + 
+                  " - " + DoubleToString(g_fvgZones[i].price_high, _Digits) + "\\n";
+      }
+   }
+   update += "\\n";
+   
+   // Recent Price Action
+   update += "📈 <b>Recent Price Action</b>\\n";
+   double current_price = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double prev_price = iClose(_Symbol, PERIOD_CURRENT, 1);
+   double price_change = ((current_price - prev_price) / prev_price) * 100;
+   
+   update += "• Current Price: " + DoubleToString(current_price, _Digits) + "\\n";
+   update += "• Change: " + DoubleToString(price_change, 2) + "%\\n";
+   update += "• Volume: " + DoubleToString(tick_volume[0], 0) + "\\n";
+   
+   // Add price action patterns
+   string patterns = GetRecentPriceAction();
+   if(StringLen(patterns) > 0)
+   {
+      update += "• Patterns:\\n" + patterns;
+   }
+   
+   update += "\\n";
+   
+   // Technical Indicators
+   update += "📊 <b>Technical Indicators</b>\\n";
+   update += GetTechnicalIndicators();
+   
+   // Advanced Pattern Recognition
+   update += "\\n";
+   update += GetAdvancedPatterns();
+   
+   // Send update
+   SendMarketUpdate(update);
+}
+
+//+------------------------------------------------------------------+
+//| Check if market is in uptrend                                    |
+//+------------------------------------------------------------------+
+bool IsInUptrend()
+{
+   double ma20_handle = iMA(_Symbol, PERIOD_CURRENT, 20, 0, MODE_SMA, PRICE_CLOSE);
+   double ma50_handle = iMA(_Symbol, PERIOD_CURRENT, 50, 0, MODE_SMA, PRICE_CLOSE);
+   double ma200_handle = iMA(_Symbol, PERIOD_CURRENT, 200, 0, MODE_SMA, PRICE_CLOSE);
+   
+   double ma20[], ma50[], ma200[];
+   if(CopyBuffer(ma20_handle, 0, 0, 1, ma20) > 0 && 
+      CopyBuffer(ma50_handle, 0, 0, 1, ma50) > 0 &&
+      CopyBuffer(ma200_handle, 0, 0, 1, ma200) > 0)
+   {
+      double current_price = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+      return (current_price > ma20[0] && ma20[0] > ma50[0] && ma50[0] > ma200[0]);
+   }
+   return false;
+}
+
+//+------------------------------------------------------------------+
+//| Check if market is in downtrend                                  |
+//+------------------------------------------------------------------+
+bool IsInDowntrend()
+{
+   double ma20_handle = iMA(_Symbol, PERIOD_CURRENT, 20, 0, MODE_SMA, PRICE_CLOSE);
+   double ma50_handle = iMA(_Symbol, PERIOD_CURRENT, 50, 0, MODE_SMA, PRICE_CLOSE);
+   double ma200_handle = iMA(_Symbol, PERIOD_CURRENT, 200, 0, MODE_SMA, PRICE_CLOSE);
+   
+   double ma20[], ma50[], ma200[];
+   if(CopyBuffer(ma20_handle, 0, 0, 1, ma20) > 0 && 
+      CopyBuffer(ma50_handle, 0, 0, 1, ma50) > 0 &&
+      CopyBuffer(ma200_handle, 0, 0, 1, ma200) > 0)
+   {
+      double current_price = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+      return (current_price < ma20[0] && ma20[0] < ma50[0] && ma50[0] < ma200[0]);
+   }
+   return false;
+}
+
+//+------------------------------------------------------------------+
+//| Get key price levels                                             |
+//+------------------------------------------------------------------+
+void GetKeyLevels(double &levels[])
+{
+   ArrayResize(levels, 0);
+   
+   // Get recent highs and lows
+   double highs[], lows[];
+   ArrayResize(highs, 20);
+   ArrayResize(lows, 20);
+   
+   CopyHigh(_Symbol, PERIOD_CURRENT, 1, 20, highs);
+   CopyLow(_Symbol, PERIOD_CURRENT, 1, 20, lows);
+   
+   // Find swing highs and lows
+   for(int i = 2; i < 18; i++)
+   {
+      // Swing high
+      if(highs[i] > highs[i-1] && highs[i] > highs[i-2] &&
+         highs[i] > highs[i+1] && highs[i] > highs[i+2])
+      {
+         ArrayResize(levels, ArraySize(levels) + 1);
+         levels[ArraySize(levels) - 1] = highs[i];
+      }
+      
+      // Swing low
+      if(lows[i] < lows[i-1] && lows[i] < lows[i-2] &&
+         lows[i] < lows[i+1] && lows[i] < lows[i+2])
+      {
+         ArrayResize(levels, ArraySize(levels) + 1);
+         levels[ArraySize(levels) - 1] = lows[i];
+      }
+   }
+   
+   // Sort levels
+   ArraySort(levels);
+   
+   // Remove duplicates and levels too close to each other
+   double min_distance = _Point * 50; // Minimum distance between levels
+   for(int i = 0; i < ArraySize(levels) - 1; i++)
+   {
+      if(MathAbs(levels[i] - levels[i+1]) < min_distance)
+      {
+         for(int j = i + 1; j < ArraySize(levels) - 1; j++)
+         {
+            levels[j] = levels[j+1];
+         }
+         ArrayResize(levels, ArraySize(levels) - 1);
+         i--;
+      }
+   }
 }
 
 //+------------------------------------------------------------------+
@@ -663,4 +874,341 @@ void DrawEquilibriumLine(string name, double price)
    ObjectSetInteger(0, name, OBJPROP_SELECTED, false);
    ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
    ObjectSetInteger(0, name, OBJPROP_ZORDER, 0);
+}
+
+//+------------------------------------------------------------------+
+//| Draw Elliott Waves                                               |
+//+------------------------------------------------------------------+
+void DrawElliottWaves()
+{
+   // Get price data
+   double highs[], lows[];
+   ArrayResize(highs, 100);
+   ArrayResize(lows, 100);
+   
+   CopyHigh(_Symbol, PERIOD_CURRENT, 1, 100, highs);
+   CopyLow(_Symbol, PERIOD_CURRENT, 1, 100, lows);
+   
+   // Find wave points
+   int wave_points[];
+   ArrayResize(wave_points, 0);
+   
+   for(int i = 2; i < ArraySize(highs) - 2; i++)
+   {
+      // Wave 1
+      if(highs[i] > highs[i-1] && highs[i] > highs[i-2] &&
+         highs[i] > highs[i+1] && highs[i] > highs[i+2])
+      {
+         ArrayResize(wave_points, ArraySize(wave_points) + 1);
+         wave_points[ArraySize(wave_points) - 1] = i;
+      }
+      
+      // Wave 2
+      if(lows[i] < lows[i-1] && lows[i] < lows[i-2] &&
+         lows[i] < lows[i+1] && lows[i] < lows[i+2])
+      {
+         ArrayResize(wave_points, ArraySize(wave_points) + 1);
+         wave_points[ArraySize(wave_points) - 1] = i;
+      }
+   }
+   
+   // Draw waves
+   for(int i = 0; i < ArraySize(wave_points) - 1; i++)
+   {
+      string name = PREFIX_EW + IntegerToString(i);
+      ObjectCreate(0, name, OBJ_TREND, 0, 
+                  TimeCurrent() - (ArraySize(highs) - wave_points[i]) * PeriodSeconds(PERIOD_CURRENT),
+                  highs[wave_points[i]],
+                  TimeCurrent() - (ArraySize(highs) - wave_points[i+1]) * PeriodSeconds(PERIOD_CURRENT),
+                  highs[wave_points[i+1]]);
+      
+      ObjectSetInteger(0, name, OBJPROP_COLOR, clrBlue);
+      ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_SOLID);
+      ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Draw harmonic patterns                                           |
+//+------------------------------------------------------------------+
+void DrawHarmonicPatterns()
+{
+   // Get price data
+   double highs[], lows[];
+   ArrayResize(highs, 100);
+   ArrayResize(lows, 100);
+   
+   CopyHigh(_Symbol, PERIOD_CURRENT, 1, 100, highs);
+   CopyLow(_Symbol, PERIOD_CURRENT, 1, 100, lows);
+   
+   // Find pattern points
+   int pattern_points[];
+   ArrayResize(pattern_points, 0);
+   
+   // Look for Gartley pattern
+   if(IsGartleyPattern(highs, lows))
+   {
+      // Draw pattern
+      string name = PREFIX_HARMONIC + "Gartley";
+      ObjectCreate(0, name, OBJ_TREND, 0, 
+                  TimeCurrent() - (ArraySize(highs) - pattern_points[0]) * PeriodSeconds(PERIOD_CURRENT),
+                  highs[pattern_points[0]],
+                  TimeCurrent() - (ArraySize(highs) - pattern_points[1]) * PeriodSeconds(PERIOD_CURRENT),
+                  highs[pattern_points[1]]);
+      
+      ObjectSetInteger(0, name, OBJPROP_COLOR, clrGreen);
+      ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_SOLID);
+      ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Draw divergences                                                 |
+//+------------------------------------------------------------------+
+void DrawDivergences()
+{
+   // RSI Divergence
+   int rsi_handle = iRSI(_Symbol, PERIOD_CURRENT, 14, PRICE_CLOSE);
+   double rsi[];
+   if(CopyBuffer(rsi_handle, 0, 0, 20, rsi) > 0)
+   {
+      // Find divergence points
+      int div_points[];
+      ArrayResize(div_points, 0);
+      
+      for(int i = 1; i < ArraySize(rsi) - 1; i++)
+      {
+         if(rsi[i] > rsi[i-1] && rsi[i] > rsi[i+1])
+         {
+            ArrayResize(div_points, ArraySize(div_points) + 1);
+            div_points[ArraySize(div_points) - 1] = i;
+         }
+      }
+      
+      // Draw divergences
+      for(int i = 0; i < ArraySize(div_points) - 1; i++)
+      {
+         string name = PREFIX_DIV + IntegerToString(i);
+         ObjectCreate(0, name, OBJ_TREND, 0, 
+                     TimeCurrent() - (ArraySize(rsi) - div_points[i]) * PeriodSeconds(PERIOD_CURRENT),
+                     rsi[div_points[i]],
+                     TimeCurrent() - (ArraySize(rsi) - div_points[i+1]) * PeriodSeconds(PERIOD_CURRENT),
+                     rsi[div_points[i+1]]);
+         
+         ObjectSetInteger(0, name, OBJPROP_COLOR, clrRed);
+         ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_DOT);
+         ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Draw market profile                                              |
+//+------------------------------------------------------------------+
+void DrawMarketProfile()
+{
+   // Get price data
+   double highs[], lows[];
+   ArrayResize(highs, 50);
+   ArrayResize(lows, 50);
+   
+   CopyHigh(_Symbol, PERIOD_CURRENT, 1, 50, highs);
+   CopyLow(_Symbol, PERIOD_CURRENT, 1, 50, lows);
+   
+   // Calculate value area
+   double highest_high = highs[ArrayMaximum(highs, 0, ArraySize(highs))];
+   double lowest_low = lows[ArrayMinimum(lows, 0, ArraySize(lows))];
+   double range = highest_high - lowest_low;
+   
+   double value_area_high = highest_high - range * 0.25;
+   double value_area_low = lowest_low + range * 0.25;
+   
+   // Draw value area
+   string name = PREFIX_MP + "ValueArea";
+   ObjectCreate(0, name, OBJ_RECTANGLE, 0, 
+               TimeCurrent() - 50 * PeriodSeconds(PERIOD_CURRENT),
+               value_area_high,
+               TimeCurrent(),
+               value_area_low);
+   
+   ObjectSetInteger(0, name, OBJPROP_COLOR, clrBlue);
+   ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_SOLID);
+   ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
+   ObjectSetInteger(0, name, OBJPROP_FILL, true);
+   ObjectSetInteger(0, name, OBJPROP_BACK, true);
+   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, name, OBJPROP_SELECTED, false);
+   ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+   ObjectSetInteger(0, name, OBJPROP_ZORDER, 0);
+}
+
+//+------------------------------------------------------------------+
+//| Draw order flow                                                  |
+//+------------------------------------------------------------------+
+void DrawOrderFlow()
+{
+   // Get volume data
+   long volumes[];
+   ArrayResize(volumes, 20);
+   CopyTickVolume(_Symbol, PERIOD_CURRENT, 1, 20, volumes);
+   
+   // Get price data
+   double opens[], highs[], lows[], closes[];
+   ArrayResize(opens, 20);
+   ArrayResize(highs, 20);
+   ArrayResize(lows, 20);
+   ArrayResize(closes, 20);
+   
+   CopyOpen(_Symbol, PERIOD_CURRENT, 1, 20, opens);
+   CopyHigh(_Symbol, PERIOD_CURRENT, 1, 20, highs);
+   CopyLow(_Symbol, PERIOD_CURRENT, 1, 20, lows);
+   CopyClose(_Symbol, PERIOD_CURRENT, 1, 20, closes);
+   
+   // Draw volume bars
+   for(int i = 0; i < ArraySize(volumes); i++)
+   {
+      string name = PREFIX_OF + IntegerToString(i);
+      color bar_color = (closes[i] > opens[i]) ? clrGreen : clrRed;
+      
+      ObjectCreate(0, name, OBJ_RECTANGLE, 0, 
+                  TimeCurrent() - (ArraySize(volumes) - i) * PeriodSeconds(PERIOD_CURRENT),
+                  closes[i],
+                  TimeCurrent() - (ArraySize(volumes) - i - 1) * PeriodSeconds(PERIOD_CURRENT),
+                  opens[i]);
+      
+      ObjectSetInteger(0, name, OBJPROP_COLOR, bar_color);
+      ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_SOLID);
+      ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
+      ObjectSetInteger(0, name, OBJPROP_FILL, true);
+      ObjectSetInteger(0, name, OBJPROP_BACK, true);
+      ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+      ObjectSetInteger(0, name, OBJPROP_SELECTED, false);
+      ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+      ObjectSetInteger(0, name, OBJPROP_ZORDER, 0);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Draw advanced patterns                                           |
+//+------------------------------------------------------------------+
+void DrawAdvancedPatterns()
+{
+   // Get price data
+   double opens[], highs[], lows[], closes[];
+   ArrayResize(opens, 100);
+   ArrayResize(highs, 100);
+   ArrayResize(lows, 100);
+   ArrayResize(closes, 100);
+   
+   CopyOpen(_Symbol, PERIOD_CURRENT, 1, 100, opens);
+   CopyHigh(_Symbol, PERIOD_CURRENT, 1, 100, highs);
+   CopyLow(_Symbol, PERIOD_CURRENT, 1, 100, lows);
+   CopyClose(_Symbol, PERIOD_CURRENT, 1, 100, closes);
+   
+   // Draw double top/bottom
+   if(IsDoubleTop(highs, lows))
+   {
+      string name = PREFIX_PATTERN + "DoubleTop";
+      ObjectCreate(0, name, OBJ_TREND, 0, 
+                  TimeCurrent() - (ArraySize(highs) - 20) * PeriodSeconds(PERIOD_CURRENT),
+                  highs[20],
+                  TimeCurrent() - (ArraySize(highs) - 40) * PeriodSeconds(PERIOD_CURRENT),
+                  highs[40]);
+      
+      ObjectSetInteger(0, name, OBJPROP_COLOR, clrRed);
+      ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_SOLID);
+      ObjectSetInteger(0, name, OBJPROP_WIDTH, 2);
+   }
+   
+   // Draw head and shoulders
+   if(IsHeadAndShoulders(highs, lows))
+   {
+      string name = PREFIX_PATTERN + "HeadAndShoulders";
+      ObjectCreate(0, name, OBJ_TREND, 0, 
+                  TimeCurrent() - (ArraySize(highs) - 20) * PeriodSeconds(PERIOD_CURRENT),
+                  highs[20],
+                  TimeCurrent() - (ArraySize(highs) - 40) * PeriodSeconds(PERIOD_CURRENT),
+                  highs[40]);
+      
+      ObjectSetInteger(0, name, OBJPROP_COLOR, clrRed);
+      ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_SOLID);
+      ObjectSetInteger(0, name, OBJPROP_WIDTH, 2);
+   }
+   
+   // Draw triangles
+   if(IsAscendingTriangle(highs, lows))
+   {
+      string name = PREFIX_PATTERN + "AscendingTriangle";
+      ObjectCreate(0, name, OBJ_TREND, 0, 
+                  TimeCurrent() - (ArraySize(highs) - 20) * PeriodSeconds(PERIOD_CURRENT),
+                  highs[20],
+                  TimeCurrent() - (ArraySize(highs) - 40) * PeriodSeconds(PERIOD_CURRENT),
+                  highs[40]);
+      
+      ObjectSetInteger(0, name, OBJPROP_COLOR, clrBlue);
+      ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_SOLID);
+      ObjectSetInteger(0, name, OBJPROP_WIDTH, 2);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Draw market structure                                            |
+//+------------------------------------------------------------------+
+void DrawMarketStructure()
+{
+   // Get price data
+   double highs[], lows[];
+   ArrayResize(highs, 50);
+   ArrayResize(lows, 50);
+   
+   CopyHigh(_Symbol, PERIOD_CURRENT, 1, 50, highs);
+   CopyLow(_Symbol, PERIOD_CURRENT, 1, 50, lows);
+   
+   // Draw higher highs and higher lows
+   bool higher_highs = true;
+   bool higher_lows = true;
+   
+   for(int i = 1; i < ArraySize(highs); i++)
+   {
+      if(highs[i] <= highs[i-1]) higher_highs = false;
+      if(lows[i] <= lows[i-1]) higher_lows = false;
+   }
+   
+   if(higher_highs && higher_lows)
+   {
+      string name = PREFIX_MS + "Uptrend";
+      ObjectCreate(0, name, OBJ_TREND, 0, 
+                  TimeCurrent() - 50 * PeriodSeconds(PERIOD_CURRENT),
+                  lows[0],
+                  TimeCurrent(),
+                  highs[ArraySize(highs)-1]);
+      
+      ObjectSetInteger(0, name, OBJPROP_COLOR, clrGreen);
+      ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_SOLID);
+      ObjectSetInteger(0, name, OBJPROP_WIDTH, 2);
+   }
+   
+   // Draw lower highs and lower lows
+   bool lower_highs = true;
+   bool lower_lows = true;
+   
+   for(int i = 1; i < ArraySize(highs); i++)
+   {
+      if(highs[i] >= highs[i-1]) lower_highs = false;
+      if(lows[i] >= lows[i-1]) lower_lows = false;
+   }
+   
+   if(lower_highs && lower_lows)
+   {
+      string name = PREFIX_MS + "Downtrend";
+      ObjectCreate(0, name, OBJ_TREND, 0, 
+                  TimeCurrent() - 50 * PeriodSeconds(PERIOD_CURRENT),
+                  highs[0],
+                  TimeCurrent(),
+                  lows[ArraySize(lows)-1]);
+      
+      ObjectSetInteger(0, name, OBJPROP_COLOR, clrRed);
+      ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_SOLID);
+      ObjectSetInteger(0, name, OBJPROP_WIDTH, 2);
+   }
 } 
