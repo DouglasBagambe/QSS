@@ -1,2 +1,2 @@
-web: python -m telegram_bot.bot.main
+web: python -m bot.main
 api: python -m webhook.signal_api 
