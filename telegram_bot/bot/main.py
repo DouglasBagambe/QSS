@@ -7,6 +7,7 @@ from aiogram.types import Message
 from aiogram.utils.token import validate_token
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
+import os
 
 from bot.config import Config
 from bot.handlers import (
@@ -20,6 +21,10 @@ from bot.utils.logger import setup_logging
 # Initialize logging
 setup_logging()
 logger = logging.getLogger(__name__)
+
+async def health_check(request: web.Request) -> web.Response:
+    """Health check endpoint for Railway"""
+    return web.Response(text="OK", status=200)
 
 async def on_startup(bot: Bot) -> None:
     """Actions to perform on bot startup"""
@@ -67,6 +72,25 @@ async def main() -> None:
         # Register startup and shutdown handlers
         dp.startup.register(on_startup)
         dp.shutdown.register(on_shutdown)
+        
+        # Create web application
+        app = web.Application()
+        app.router.add_get("/health", health_check)
+        
+        # Setup webhook handler
+        webhook_handler = SimpleRequestHandler(
+            dispatcher=dp,
+            bot=bot
+        )
+        webhook_handler.register(app, path="/webhook")
+        
+        # Start web server
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, "0.0.0.0", int(os.getenv("PORT", "8000")))
+        await site.start()
+        
+        logger.info("Web server started!")
         
         # Start polling
         logger.info("Starting polling...")
