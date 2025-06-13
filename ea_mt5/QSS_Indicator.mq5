@@ -34,6 +34,7 @@ int g_updateInterval = 300; // 5 minutes
 #define PREFIX_PIVOT "PIV_"    // Pivot Points
 #define PREFIX_CLOUD "CLD_"    // Ichimoku Cloud
 #define PREFIX_MS "MS_"        // Market Structure
+#define PREFIX_VP "VP_"        // Volume Profile
 
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
@@ -1299,10 +1300,10 @@ void DrawTechnicalIndicators()
    
    for(int i = 0; i < ArraySize(ema12); i++)
    {
-      ema12[i] = iMA(_Symbol, PERIOD_CURRENT, 12, 0, MODE_EMA, PRICE_CLOSE, i);
-      ema26[i] = iMA(_Symbol, PERIOD_CURRENT, 26, 0, MODE_EMA, PRICE_CLOSE, i);
+      ema12[i] = iMA(_Symbol, PERIOD_CURRENT, 12, 0, MODE_EMA, PRICE_CLOSE);
+      ema26[i] = iMA(_Symbol, PERIOD_CURRENT, 26, 0, MODE_EMA, PRICE_CLOSE);
       macd[i] = ema12[i] - ema26[i];
-      signal[i] = iMA(_Symbol, PERIOD_CURRENT, 9, 0, MODE_EMA, PRICE_CLOSE, i);
+      signal[i] = iMA(_Symbol, PERIOD_CURRENT, 9, 0, MODE_EMA, PRICE_CLOSE);
       histogram[i] = macd[i] - signal[i];
    }
    
@@ -1312,7 +1313,7 @@ void DrawTechnicalIndicators()
       double highest_high = highs[ArrayMaximum(highs, i, 14)];
       double lowest_low = lows[ArrayMinimum(lows, i, 14)];
       stoch_k[i] = 100 * (closes[i] - lowest_low) / (highest_high - lowest_low);
-      stoch_d[i] = iMA(_Symbol, PERIOD_CURRENT, 3, 0, MODE_SMA, PRICE_CLOSE, i);
+      stoch_d[i] = iMA(_Symbol, PERIOD_CURRENT, 3, 0, MODE_SMA, PRICE_CLOSE);
    }
    
    // Calculate ADX
@@ -1327,8 +1328,8 @@ void DrawTechnicalIndicators()
       if(plus_dm < minus_dm) plus_dm = 0;
       if(minus_dm < plus_dm) minus_dm = 0;
       
-      di_plus[i] = 100 * iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_EMA, PRICE_CLOSE, i);
-      di_minus[i] = 100 * iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_EMA, PRICE_CLOSE, i);
+      di_plus[i] = 100 * iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_EMA, PRICE_CLOSE);
+      di_minus[i] = 100 * iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_EMA, PRICE_CLOSE);
       adx[i] = 100 * MathAbs(di_plus[i] - di_minus[i]) / (di_plus[i] + di_minus[i]);
    }
    
@@ -1336,17 +1337,17 @@ void DrawTechnicalIndicators()
    for(int i = 0; i < ArraySize(atr); i++)
    {
       double tr = MathMax(highs[i] - lows[i], MathMax(MathAbs(highs[i] - closes[i-1]), MathAbs(lows[i] - closes[i-1])));
-      atr[i] = iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_SMA, PRICE_CLOSE, i);
+      atr[i] = iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_SMA, PRICE_CLOSE);
    }
    
    // Calculate OBV
-   obv[0] = (double)volume[0];
+   obv[0] = (double)tick_volume[0];
    for(int i = 1; i < ArraySize(obv); i++)
    {
       if(closes[i] > closes[i-1])
-         obv[i] = obv[i-1] + (double)volume[i];
+         obv[i] = obv[i-1] + (double)tick_volume[i];
       else if(closes[i] < closes[i-1])
-         obv[i] = obv[i-1] - (double)volume[i];
+         obv[i] = obv[i-1] - (double)tick_volume[i];
       else
          obv[i] = obv[i-1];
    }
@@ -1355,7 +1356,7 @@ void DrawTechnicalIndicators()
    for(int i = 0; i < ArraySize(mfi); i++)
    {
       double typical_price = (highs[i] + lows[i] + closes[i]) / 3;
-      double money_flow = typical_price * (double)volume[i];
+      double money_flow = typical_price * (double)tick_volume[i];
       
       double positive_flow = 0, negative_flow = 0;
       for(int j = i; j < i + 14 && j < ArraySize(closes); j++)
@@ -1966,4 +1967,62 @@ bool IsBearishDivergence(const double &price[], const double &indicator[], int s
    double ind_high2 = indicator[start_idx];
    
    return price_high2 > price_high1 && ind_high2 < ind_high1;
-} 
+}
+
+//+------------------------------------------------------------------+
+//| Draw volume profile                                              |
+//+------------------------------------------------------------------+
+void DrawVolumeProfile()
+{
+   double highs[], lows[], closes[], volumes[];
+   ArrayResize(highs, 100);
+   ArrayResize(lows, 100);
+   ArrayResize(closes, 100);
+   ArrayResize(volumes, 100);
+   
+   CopyHigh(_Symbol, PERIOD_CURRENT, 1, 100, highs);
+   CopyLow(_Symbol, PERIOD_CURRENT, 1, 100, lows);
+   CopyClose(_Symbol, PERIOD_CURRENT, 1, 100, closes);
+   CopyTickVolume(_Symbol, PERIOD_CURRENT, 1, 100, volumes);
+   
+   double max_volume = 0;
+   for(int i = 0; i < ArraySize(volumes); i++)
+   {
+      if(volumes[i] > max_volume)
+         max_volume = volumes[i];
+   }
+   
+   for(int i = 0; i < ArraySize(volumes); i++)
+   {
+      string name = PREFIX_VP + "Vol_" + IntegerToString(i);
+      double volume_ratio = volumes[i] / max_volume;
+      color vol_color = ColorScale(volume_ratio);
+      
+      ObjectCreate(0, name, OBJ_RECTANGLE, 0, TimeCurrent(), highs[i], TimeCurrent() + PeriodSeconds(PERIOD_CURRENT), lows[i]);
+      ObjectSetInteger(0, name, OBJPROP_COLOR, vol_color);
+      ObjectSetInteger(0, name, OBJPROP_FILL, true);
+      ObjectSetInteger(0, name, OBJPROP_BACK, true);
+      ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+      ObjectSetInteger(0, name, OBJPROP_SELECTED, false);
+      ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+      ObjectSetInteger(0, name, OBJPROP_ZORDER, 0);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Color scale function                                             |
+//+------------------------------------------------------------------+
+color ColorScale(double value)
+{
+   if(value < 0.2)
+      return clrLightBlue;
+   else if(value < 0.4)
+      return clrBlue;
+   else if(value < 0.6)
+      return clrDarkBlue;
+   else if(value < 0.8)
+      return clrNavy;
+   else
+      return clrBlack;
+}
+  

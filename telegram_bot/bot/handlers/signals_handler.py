@@ -20,7 +20,13 @@ async def signals_handler(message: Message):
         "• USD/JPY - US Dollar/Japanese Yen\n"
         "• USD/CHF - US Dollar/Swiss Franc\n"
         "• AUD/USD - Australian Dollar/US Dollar\n"
-        "• USD/CAD - US Dollar/Canadian Dollar\n\n"
+        "• USD/CAD - US Dollar/Canadian Dollar\n"
+        "• GBP/JPY - British Pound/Japanese Yen\n"
+        "• EUR/JPY - Euro/Japanese Yen\n"
+        "• XAU/USD - Gold/US Dollar\n"
+        "• XAG/USD - Silver/US Dollar\n"
+        "• NAS100 - Nasdaq 100 Index\n"
+        "• US300 - S&P 500 Index\n\n"
         "Choose a pair to analyze:"
     )
     

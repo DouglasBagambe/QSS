@@ -1374,4 +1374,30 @@ bool IsBearishDivergence(const double &price[], const double &indicator[], int s
    double ind_high2 = indicator[start_idx];
    
    return price_high2 > price_high1 && ind_high2 < ind_high1;
+}
+
+bool IsBatPattern(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 4) return false;
+   
+   double xab = MathAbs(highs[start_idx-1] - lows[start_idx-2]) / MathAbs(highs[start_idx-2] - lows[start_idx-3]);
+   double abc = MathAbs(lows[start_idx-1] - highs[start_idx]) / MathAbs(highs[start_idx-1] - lows[start_idx-2]);
+   double bcd = MathAbs(highs[start_idx] - lows[start_idx+1]) / MathAbs(lows[start_idx-1] - highs[start_idx]);
+   double xad = MathAbs(highs[start_idx-1] - lows[start_idx+1]) / MathAbs(highs[start_idx-2] - lows[start_idx-3]);
+   
+   return (xab >= 0.382 && xab <= 0.5) &&
+          (abc >= 0.382 && abc <= 0.886) &&
+          (bcd >= 1.618 && bcd <= 2.618) &&
+          (xad >= 0.886 && xad <= 0.886);
+}
+
+bool IsSymmetricalTriangle(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 4) return false;
+   
+   double upper_slope = (highs[start_idx] - highs[start_idx-4]) / (start_idx - (start_idx-4));
+   double lower_slope = (lows[start_idx] - lows[start_idx-4]) / (start_idx - (start_idx-4));
+   
+   return MathAbs(upper_slope) < 0.1 && MathAbs(lower_slope) < 0.1 &&
+          upper_slope < 0 && lower_slope > 0;
 } 
