@@ -31,7 +31,7 @@ async def on_startup(bot: Bot) -> None:
     logger.info("Starting bot...")
     
     # Validate bot token
-    if not validate_token(config.BOT_TOKEN):
+    if not validate_token(config.bot_token):
         logger.error("Invalid bot token!")
         return
     
@@ -60,7 +60,7 @@ async def main() -> None:
     """Main function to start the bot"""
     try:
         # Initialize bot and dispatcher
-        bot = Bot(token=config.BOT_TOKEN, parse_mode=ParseMode.HTML)
+        bot = Bot(token=config.bot_token, parse_mode=ParseMode.HTML)
         dp = Dispatcher()
         
         # Register handlers and middleware

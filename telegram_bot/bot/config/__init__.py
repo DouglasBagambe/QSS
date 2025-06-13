@@ -76,7 +76,4 @@ except Exception as e:
     logger.error(f"Failed to initialize configuration: {e}")
     # Create a default config if initialization fails
     config = Config()
-    logger.info("Using default configuration")
-
-# Initialize and validate configuration
-Config.validate() 
+    logger.info("Using default configuration") 
