@@ -128,4 +128,8 @@ async def cmd_help(message: Message):
         "🛡️ Conservative (0.5%)\n"
         "📝 Custom (0.1-5.0%)"
     )
-    await message.answer(help_text, reply_markup=get_main_menu()) 
+    await message.answer(help_text, reply_markup=get_main_menu())
+
+def register_handlers(dp):
+    """Register command handlers with the dispatcher"""
+    dp.include_router(router) 

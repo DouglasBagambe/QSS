@@ -247,4 +247,8 @@ async def set_risk_mode(callback: CallbackQuery):
     for guideline in guidelines['guidelines']:
         message += f"• {guideline}\n"
     
-    await callback.message.edit_text(message) 
+    await callback.message.edit_text(message)
+
+def register_advanced_handlers(dp):
+    """Register advanced handlers with the dispatcher"""
+    dp.include_router(router) 

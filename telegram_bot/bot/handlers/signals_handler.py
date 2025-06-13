@@ -109,4 +109,8 @@ async def select_timeframe(callback: CallbackQuery):
     await callback.message.edit_text(
         message,
         reply_markup=get_pair_selection_keyboard()
-    ) 
+    )
+
+def register_webhook_handlers(dp):
+    """Register webhook handlers with the dispatcher"""
+    dp.include_router(router) 
