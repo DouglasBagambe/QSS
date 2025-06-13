@@ -1,6 +1,6 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from ..config.pairs import PAIR_CATEGORIES, PAIR_DISPLAY_NAMES
+from bot.config.pairs import PAIR_CATEGORIES, PAIR_DISPLAY_NAMES
 
 def get_main_menu() -> InlineKeyboardMarkup:
     """Get the main menu keyboard"""
