@@ -242,7 +242,12 @@ void SendMarketUpdate()
    
    update += "• Current Price: " + DoubleToString(current_price, _Digits) + "\\n";
    update += "• Change: " + DoubleToString(price_change, 2) + "%\\n";
-   update += "• Volume: " + DoubleToString(tick_volume[0], 0) + "\\n";
+   // Get volume data
+   long tick_vol[];
+   ArraySetAsSeries(tick_vol, true);
+   CopyTickVolume(_Symbol, PERIOD_CURRENT, 0, 1, tick_vol);
+   
+   update += "• Volume: " + DoubleToString(tick_vol[0], 0) + "\\n";
    
    // Add price action patterns
    string patterns = GetRecentPriceAction();
@@ -974,7 +979,7 @@ void DrawHarmonicPatterns()
    ArrayResize(pattern_points, 0);
    
    // Look for Gartley pattern
-   if(IsGartleyPattern(highs, lows))
+   if(IsGartleyPattern(highs, lows, 0))
    {
       // Draw pattern
       string name = PREFIX_HARMONIC + "Gartley";
@@ -1134,7 +1139,7 @@ void DrawAdvancedPatterns()
    CopyClose(_Symbol, PERIOD_CURRENT, 1, 100, closes);
    
    // Draw double top/bottom
-   if(IsDoubleTop(highs, lows))
+   if(IsDoubleTop(highs, lows, 0))
    {
       string name = PREFIX_PATTERN + "DoubleTop";
       ObjectCreate(0, name, OBJ_TREND, 0, 
@@ -1149,7 +1154,7 @@ void DrawAdvancedPatterns()
    }
    
    // Draw head and shoulders
-   if(IsHeadAndShoulders(highs, lows))
+   if(IsHeadAndShoulders(highs, lows, 0))
    {
       string name = PREFIX_PATTERN + "HeadAndShoulders";
       ObjectCreate(0, name, OBJ_TREND, 0, 
@@ -1164,7 +1169,7 @@ void DrawAdvancedPatterns()
    }
    
    // Draw triangles
-   if(IsAscendingTriangle(highs, lows))
+   if(IsAscendingTriangle(highs, lows, 0))
    {
       string name = PREFIX_PATTERN + "AscendingTriangle";
       ObjectCreate(0, name, OBJ_TREND, 0, 
@@ -1300,10 +1305,10 @@ void DrawTechnicalIndicators()
    
    for(int i = 0; i < ArraySize(ema12); i++)
    {
-      ema12[i] = iMA(_Symbol, PERIOD_CURRENT, 12, 0, MODE_EMA);
-      ema26[i] = iMA(_Symbol, PERIOD_CURRENT, 26, 0, MODE_EMA);
+      ema12[i] = iMA(_Symbol, PERIOD_CURRENT, 12, 0, MODE_EMA, PRICE_CLOSE);
+      ema26[i] = iMA(_Symbol, PERIOD_CURRENT, 26, 0, MODE_EMA, PRICE_CLOSE);
       macd[i] = ema12[i] - ema26[i];
-      signal[i] = iMA(_Symbol, PERIOD_CURRENT, 9, 0, MODE_EMA);
+      signal[i] = iMA(_Symbol, PERIOD_CURRENT, 9, 0, MODE_EMA, PRICE_CLOSE);
       histogram[i] = macd[i] - signal[i];
    }
    
@@ -1313,7 +1318,7 @@ void DrawTechnicalIndicators()
       double highest_high = highs[ArrayMaximum(highs, i, 14)];
       double lowest_low = lows[ArrayMinimum(lows, i, 14)];
       stoch_k[i] = 100 * (closes[i] - lowest_low) / (highest_high - lowest_low);
-      stoch_d[i] = iMA(_Symbol, PERIOD_CURRENT, 3, 0, MODE_SMA);
+      stoch_d[i] = iMA(_Symbol, PERIOD_CURRENT, 3, 0, MODE_SMA, PRICE_CLOSE);
    }
    
    // Calculate ADX
@@ -1328,8 +1333,8 @@ void DrawTechnicalIndicators()
       if(plus_dm < minus_dm) plus_dm = 0;
       if(minus_dm < plus_dm) minus_dm = 0;
       
-      di_plus[i] = 100 * iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_EMA);
-      di_minus[i] = 100 * iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_EMA);
+      di_plus[i] = 100 * iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_EMA, PRICE_CLOSE);
+      di_minus[i] = 100 * iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_EMA, PRICE_CLOSE);
       adx[i] = 100 * MathAbs(di_plus[i] - di_minus[i]) / (di_plus[i] + di_minus[i]);
    }
    
@@ -1337,17 +1342,21 @@ void DrawTechnicalIndicators()
    for(int i = 0; i < ArraySize(atr); i++)
    {
       double tr = MathMax(highs[i] - lows[i], MathMax(MathAbs(highs[i] - closes[i-1]), MathAbs(lows[i] - closes[i-1])));
-      atr[i] = iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_SMA);
+      atr[i] = iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_SMA, PRICE_CLOSE);
    }
    
    // Calculate OBV
-   obv[0] = (double)tick_volume[0];
+   long tick_vol[];
+   ArraySetAsSeries(tick_vol, true);
+   CopyTickVolume(_Symbol, PERIOD_CURRENT, 0, ArraySize(obv), tick_vol);
+   
+   obv[0] = (double)tick_vol[0];
    for(int i = 1; i < ArraySize(obv); i++)
    {
       if(closes[i] > closes[i-1])
-         obv[i] = obv[i-1] + (double)tick_volume[i];
+         obv[i] = obv[i-1] + (double)tick_vol[i];
       else if(closes[i] < closes[i-1])
-         obv[i] = obv[i-1] - (double)tick_volume[i];
+         obv[i] = obv[i-1] - (double)tick_vol[i];
       else
          obv[i] = obv[i-1];
    }
@@ -1356,7 +1365,7 @@ void DrawTechnicalIndicators()
    for(int i = 0; i < ArraySize(mfi); i++)
    {
       double typical_price = (highs[i] + lows[i] + closes[i]) / 3;
-      double money_flow = typical_price * (double)tick_volume[i];
+      double money_flow = typical_price * (double)tick_vol[i];
       
       double positive_flow = 0, negative_flow = 0;
       for(int j = i; j < i + 14 && j < ArraySize(closes); j++)
@@ -1835,138 +1844,6 @@ void DrawMFI()
    
    // Draw MFI
    DrawIndicator("MFI", mfi, clrPurple);
-}
-
-//+------------------------------------------------------------------+
-//| Pattern recognition functions                                     |
-//+------------------------------------------------------------------+
-bool IsGartleyPattern(const double &highs[], const double &lows[], int start_idx)
-{
-   if(start_idx < 4) return false;
-   
-   double xab = MathAbs(highs[start_idx-1] - lows[start_idx-2]) / MathAbs(highs[start_idx-2] - lows[start_idx-3]);
-   double abc = MathAbs(lows[start_idx-1] - highs[start_idx]) / MathAbs(highs[start_idx-1] - lows[start_idx-2]);
-   double bcd = MathAbs(highs[start_idx] - lows[start_idx+1]) / MathAbs(lows[start_idx-1] - highs[start_idx]);
-   double xad = MathAbs(highs[start_idx-1] - lows[start_idx+1]) / MathAbs(highs[start_idx-2] - lows[start_idx-3]);
-   
-   return (xab >= 0.618 && xab <= 0.786) &&
-          (abc >= 0.382 && abc <= 0.886) &&
-          (bcd >= 1.272 && bcd <= 1.618) &&
-          (xad >= 0.786 && xad <= 0.886);
-}
-
-bool IsDoubleTop(const double &highs[], const double &lows[], int start_idx)
-{
-   if(start_idx < 2) return false;
-   
-   double first_high = highs[start_idx-2];
-   double second_high = highs[start_idx];
-   double neckline = lows[start_idx-1];
-   
-   return MathAbs(first_high - second_high) / first_high < 0.01 &&
-          second_high > neckline;
-}
-
-bool IsTripleTop(const double &highs[], const double &lows[], int start_idx)
-{
-   if(start_idx < 4) return false;
-   
-   double first_high = highs[start_idx-4];
-   double second_high = highs[start_idx-2];
-   double third_high = highs[start_idx];
-   double neckline = lows[start_idx-1];
-   
-   return MathAbs(first_high - second_high) / first_high < 0.01 &&
-          MathAbs(second_high - third_high) / second_high < 0.01 &&
-          third_high > neckline;
-}
-
-bool IsHeadAndShoulders(const double &highs[], const double &lows[], int start_idx)
-{
-   if(start_idx < 4) return false;
-   
-   double left_shoulder = highs[start_idx-4];
-   double head = highs[start_idx-2];
-   double right_shoulder = highs[start_idx];
-   double neckline = lows[start_idx-1];
-   
-   return head > left_shoulder && head > right_shoulder &&
-          MathAbs(left_shoulder - right_shoulder) / left_shoulder < 0.01 &&
-          head > neckline;
-}
-
-bool IsAscendingTriangle(const double &highs[], const double &lows[], int start_idx)
-{
-   if(start_idx < 4) return false;
-   
-   double resistance = highs[start_idx-4];
-   double slope = (lows[start_idx] - lows[start_idx-4]) / (start_idx - (start_idx-4));
-   
-   return MathAbs(highs[start_idx] - resistance) / resistance < 0.01 &&
-          slope > 0;
-}
-
-bool IsRisingWedge(const double &highs[], const double &lows[], int start_idx)
-{
-   if(start_idx < 4) return false;
-   
-   double upper_slope = (highs[start_idx] - highs[start_idx-4]) / (start_idx - (start_idx-4));
-   double lower_slope = (lows[start_idx] - lows[start_idx-4]) / (start_idx - (start_idx-4));
-   
-   return upper_slope > 0 && lower_slope > 0 && upper_slope < lower_slope;
-}
-
-bool IsBullFlag(const double &highs[], const double &lows[], int start_idx)
-{
-   if(start_idx < 4) return false;
-   
-   double pole_high = highs[start_idx-4];
-   double pole_low = lows[start_idx-4];
-   double flag_high = highs[start_idx];
-   double flag_low = lows[start_idx];
-   
-   return pole_high > pole_low &&
-          flag_high < pole_high &&
-          flag_low > pole_low;
-}
-
-bool IsBullPennant(const double &highs[], const double &lows[], int start_idx)
-{
-   if(start_idx < 4) return false;
-   
-   double pole_high = highs[start_idx-4];
-   double pole_low = lows[start_idx-4];
-   double pennant_high = highs[start_idx];
-   double pennant_low = lows[start_idx];
-   
-   return pole_high > pole_low &&
-          pennant_high < pole_high &&
-          pennant_low > pole_low &&
-          (pennant_high - pennant_low) < (pole_high - pole_low);
-}
-
-bool IsBullishDivergence(const double &price[], const double &indicator[], int start_idx)
-{
-   if(start_idx < 2) return false;
-   
-   double price_low1 = price[start_idx-2];
-   double price_low2 = price[start_idx];
-   double ind_low1 = indicator[start_idx-2];
-   double ind_low2 = indicator[start_idx];
-   
-   return price_low2 < price_low1 && ind_low2 > ind_low1;
-}
-
-bool IsBearishDivergence(const double &price[], const double &indicator[], int start_idx)
-{
-   if(start_idx < 2) return false;
-   
-   double price_high1 = price[start_idx-2];
-   double price_high2 = price[start_idx];
-   double ind_high1 = indicator[start_idx-2];
-   double ind_high2 = indicator[start_idx];
-   
-   return price_high2 > price_high1 && ind_high2 < ind_high1;
 }
 
 //+------------------------------------------------------------------+

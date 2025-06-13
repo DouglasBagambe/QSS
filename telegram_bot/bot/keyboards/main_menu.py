@@ -1,5 +1,6 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from ..config.pairs import PAIR_CATEGORIES, PAIR_DISPLAY_NAMES
 
 def get_main_menu() -> InlineKeyboardMarkup:
     """Get the main menu keyboard"""
@@ -70,18 +71,35 @@ def get_pair_selection_keyboard() -> InlineKeyboardMarkup:
     """Get the trading pair selection keyboard"""
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
+            # Major Pairs
             [
-                InlineKeyboardButton(text="EUR/USD", callback_data="select_pair_EURUSD"),
-                InlineKeyboardButton(text="GBP/USD", callback_data="select_pair_GBPUSD")
+                InlineKeyboardButton(text=PAIR_DISPLAY_NAMES["EURUSD"], callback_data="select_pair_EURUSD"),
+                InlineKeyboardButton(text=PAIR_DISPLAY_NAMES["GBPUSD"], callback_data="select_pair_GBPUSD")
             ],
             [
-                InlineKeyboardButton(text="USD/JPY", callback_data="select_pair_USDJPY"),
-                InlineKeyboardButton(text="USD/CHF", callback_data="select_pair_USDCHF")
+                InlineKeyboardButton(text=PAIR_DISPLAY_NAMES["USDJPY"], callback_data="select_pair_USDJPY"),
+                InlineKeyboardButton(text=PAIR_DISPLAY_NAMES["USDCHF"], callback_data="select_pair_USDCHF")
             ],
             [
-                InlineKeyboardButton(text="AUD/USD", callback_data="select_pair_AUDUSD"),
-                InlineKeyboardButton(text="USD/CAD", callback_data="select_pair_USDCAD")
+                InlineKeyboardButton(text=PAIR_DISPLAY_NAMES["AUDUSD"], callback_data="select_pair_AUDUSD"),
+                InlineKeyboardButton(text=PAIR_DISPLAY_NAMES["USDCAD"], callback_data="select_pair_USDCAD")
             ],
+            # Cross Pairs
+            [
+                InlineKeyboardButton(text=PAIR_DISPLAY_NAMES["GBPJPY"], callback_data="select_pair_GBPJPY"),
+                InlineKeyboardButton(text=PAIR_DISPLAY_NAMES["EURJPY"], callback_data="select_pair_EURJPY")
+            ],
+            # Commodities
+            [
+                InlineKeyboardButton(text=PAIR_DISPLAY_NAMES["XAUUSD"], callback_data="select_pair_XAUUSD"),
+                InlineKeyboardButton(text=PAIR_DISPLAY_NAMES["XAGUSD"], callback_data="select_pair_XAGUSD")
+            ],
+            # Indices
+            [
+                InlineKeyboardButton(text=PAIR_DISPLAY_NAMES["NAS100"], callback_data="select_pair_NAS100"),
+                InlineKeyboardButton(text=PAIR_DISPLAY_NAMES["US300"], callback_data="select_pair_US300")
+            ],
+            # Back button
             [
                 InlineKeyboardButton(text="« Back to Main Menu", callback_data="show_main_menu")
             ]
@@ -222,5 +240,7 @@ def get_analysis_menu() -> InlineKeyboardMarkup:
     
     # Back Button
     builder.row(InlineKeyboardButton(text="« Back to Main Menu", callback_data="main_menu"))
+    
+    return builder.as_markup() 
     
     return builder.as_markup() 
