@@ -15,7 +15,7 @@ load_dotenv()
 class Config:
     # Required variables with defaults
     bot_token: str = os.getenv("BOT_TOKEN", "7868189425:AAEpPFleueIoIEEnXzP2zISDdTXCX9enD-g")
-    admin_id: str = os.getenv("ADMIN_ID", "123456789")  # Must be a numeric ID or bot username
+    admin_id: str = os.getenv("ADMIN_ID", "https://t.me/QuantumSmartFlowStrategyBot")
     signal_secret: str = os.getenv("SIGNAL_SECRET", "@BAganaga4")
     password: str = os.getenv("PASSWORD", "baganaga")
     
@@ -45,10 +45,19 @@ class Config:
             # Log configuration status
             logger.info("Initializing configuration...")
             
+            # Validate required environment variables
+            if not self.bot_token:
+                raise ValueError("BOT_TOKEN environment variable is required")
+            if not self.admin_id:
+                raise ValueError("ADMIN_ID environment variable is required")
+            if not self.signal_secret:
+                raise ValueError("SIGNAL_SECRET environment variable is required")
+            if not self.password:
+                raise ValueError("PASSWORD environment variable is required")
+            
             # Validate admin_id is numeric or bot username
             if not self.admin_id.isdigit() and not self.admin_id.startswith("https://t.me/"):
                 logger.warning(f"ADMIN_ID should be numeric or bot URL, got: {self.admin_id}")
-                self.admin_id = "123456789"  # Fallback to default
             
             # Create data directory if it doesn't exist
             os.makedirs(os.path.dirname(self.USERS_FILE), exist_ok=True)
@@ -61,8 +70,7 @@ class Config:
             
         except Exception as e:
             logger.error(f"Error during configuration initialization: {e}")
-            # Don't raise the error, just log it
-            pass
+            raise
             
     def update_last_signal(self, signal_data: Dict[str, Any]):
         """Update the last signal data"""
@@ -74,6 +82,4 @@ try:
     logger.info("Configuration loaded successfully")
 except Exception as e:
     logger.error(f"Failed to initialize configuration: {e}")
-    # Create a default config if initialization fails
-    config = Config()
-    logger.info("Using default configuration") 
+    raise 

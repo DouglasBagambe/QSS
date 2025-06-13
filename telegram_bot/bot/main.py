@@ -1,5 +1,7 @@
 import asyncio
 import logging
+import signal
+import sys
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
@@ -20,6 +22,10 @@ from .utils.logger import setup_logging
 # Initialize logging
 setup_logging()
 logger = logging.getLogger(__name__)
+
+# Global variables for cleanup
+bot = None
+dp = None
 
 async def on_startup(bot: Bot) -> None:
     """Actions to perform on bot startup"""
@@ -51,8 +57,18 @@ async def on_shutdown(bot: Bot) -> None:
     logger.info("Shutting down bot...")
     await bot.session.close()
 
+def handle_exit(signum, frame):
+    """Handle exit signals"""
+    logger.info("Received exit signal, shutting down...")
+    if bot and dp:
+        asyncio.create_task(dp.stop_polling())
+        asyncio.create_task(bot.session.close())
+    sys.exit(0)
+
 async def main() -> None:
     """Main function to start the bot"""
+    global bot, dp
+    
     try:
         # Initialize bot and dispatcher
         bot = Bot(
@@ -71,16 +87,25 @@ async def main() -> None:
         dp.startup.register(on_startup)
         dp.shutdown.register(on_shutdown)
         
+        # Register signal handlers
+        signal.signal(signal.SIGINT, handle_exit)
+        signal.signal(signal.SIGTERM, handle_exit)
+        
         # Start polling
         logger.info("Starting polling...")
-        await dp.start_polling(bot)
+        await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
         
     except Exception as e:
         logger.error(f"Error starting bot: {e}")
+        if bot:
+            await bot.session.close()
         raise
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
-        logger.info("Bot stopped!") 
+        logger.info("Bot stopped!")
+    except Exception as e:
+        logger.error(f"Fatal error: {e}")
+        sys.exit(1) 
