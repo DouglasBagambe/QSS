@@ -1122,4 +1122,151 @@ string AnalyzeMarketProfile()
       profile += "• Neutral Price Distribution\\n";
    
    return profile;
+}
+
+//+------------------------------------------------------------------+
+//| Fix type conversion warnings                                      |
+//+------------------------------------------------------------------+
+void SendMarketUpdate()
+{
+   // ... existing code ...
+   
+   // Fix type conversion warnings
+   double volume_value = (double)volume[0];
+   double tick_volume_value = (double)tick_volume[0];
+   double spread_value = (double)spread[0];
+   
+   // ... rest of the code ...
+}
+
+//+------------------------------------------------------------------+
+//| Fix pattern recognition functions                                 |
+//+------------------------------------------------------------------+
+bool IsGartleyPattern(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 4) return false;
+   
+   double xab = MathAbs(highs[start_idx-1] - lows[start_idx-2]) / MathAbs(highs[start_idx-2] - lows[start_idx-3]);
+   double abc = MathAbs(lows[start_idx-1] - highs[start_idx]) / MathAbs(highs[start_idx-1] - lows[start_idx-2]);
+   double bcd = MathAbs(highs[start_idx] - lows[start_idx+1]) / MathAbs(lows[start_idx-1] - highs[start_idx]);
+   double xad = MathAbs(highs[start_idx-1] - lows[start_idx+1]) / MathAbs(highs[start_idx-2] - lows[start_idx-3]);
+   
+   return (xab >= 0.618 && xab <= 0.786) &&
+          (abc >= 0.382 && abc <= 0.886) &&
+          (bcd >= 1.272 && bcd <= 1.618) &&
+          (xad >= 0.786 && xad <= 0.886);
+}
+
+bool IsDoubleTop(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 2) return false;
+   
+   double first_high = highs[start_idx-2];
+   double second_high = highs[start_idx];
+   double neckline = lows[start_idx-1];
+   
+   return MathAbs(first_high - second_high) / first_high < 0.01 &&
+          second_high > neckline;
+}
+
+bool IsTripleTop(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 4) return false;
+   
+   double first_high = highs[start_idx-4];
+   double second_high = highs[start_idx-2];
+   double third_high = highs[start_idx];
+   double neckline = lows[start_idx-1];
+   
+   return MathAbs(first_high - second_high) / first_high < 0.01 &&
+          MathAbs(second_high - third_high) / second_high < 0.01 &&
+          third_high > neckline;
+}
+
+bool IsHeadAndShoulders(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 4) return false;
+   
+   double left_shoulder = highs[start_idx-4];
+   double head = highs[start_idx-2];
+   double right_shoulder = highs[start_idx];
+   double neckline = lows[start_idx-1];
+   
+   return head > left_shoulder && head > right_shoulder &&
+          MathAbs(left_shoulder - right_shoulder) / left_shoulder < 0.01 &&
+          head > neckline;
+}
+
+bool IsAscendingTriangle(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 4) return false;
+   
+   double resistance = highs[start_idx-4];
+   double slope = (lows[start_idx] - lows[start_idx-4]) / (start_idx - (start_idx-4));
+   
+   return MathAbs(highs[start_idx] - resistance) / resistance < 0.01 &&
+          slope > 0;
+}
+
+bool IsRisingWedge(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 4) return false;
+   
+   double upper_slope = (highs[start_idx] - highs[start_idx-4]) / (start_idx - (start_idx-4));
+   double lower_slope = (lows[start_idx] - lows[start_idx-4]) / (start_idx - (start_idx-4));
+   
+   return upper_slope > 0 && lower_slope > 0 && upper_slope < lower_slope;
+}
+
+bool IsBullFlag(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 4) return false;
+   
+   double pole_high = highs[start_idx-4];
+   double pole_low = lows[start_idx-4];
+   double flag_high = highs[start_idx];
+   double flag_low = lows[start_idx];
+   
+   return pole_high > pole_low &&
+          flag_high < pole_high &&
+          flag_low > pole_low;
+}
+
+bool IsBullPennant(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 4) return false;
+   
+   double pole_high = highs[start_idx-4];
+   double pole_low = lows[start_idx-4];
+   double pennant_high = highs[start_idx];
+   double pennant_low = lows[start_idx];
+   
+   return pole_high > pole_low &&
+          pennant_high < pole_high &&
+          pennant_low > pole_low &&
+          (pennant_high - pennant_low) < (pole_high - pole_low);
+}
+
+bool IsBullishDivergence(const double &price[], const double &indicator[], int start_idx)
+{
+   if(start_idx < 2) return false;
+   
+   double price_low1 = price[start_idx-2];
+   double price_low2 = price[start_idx];
+   double ind_low1 = indicator[start_idx-2];
+   double ind_low2 = indicator[start_idx];
+   
+   return price_low2 < price_low1 && ind_low2 > ind_low1;
+}
+
+bool IsBearishDivergence(const double &price[], const double &indicator[], int start_idx)
+{
+   if(start_idx < 2) return false;
+   
+   double price_high1 = price[start_idx-2];
+   double price_high2 = price[start_idx];
+   double ind_high1 = indicator[start_idx-2];
+   double ind_high2 = indicator[start_idx];
+   
+   return price_high2 > price_high1 && ind_high2 < ind_high1;
 } 
