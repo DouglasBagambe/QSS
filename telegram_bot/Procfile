@@ -1,2 +1,2 @@
-web: python -m bot.main
+web: python -m bot
 api: python -m webhook.signal_api 
