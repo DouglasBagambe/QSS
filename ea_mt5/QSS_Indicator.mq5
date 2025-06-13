@@ -137,6 +137,18 @@ int OnCalculate(const int rates_total,
       DrawOrderFlow();
       DrawAdvancedPatterns();
       DrawMarketStructure();
+      DrawTechnicalIndicators();
+      DrawFibonacciLevels();
+      DrawPivotPoints();
+      DrawIchimokuCloud();
+      DrawBollingerBands();
+      DrawRSI();
+      DrawMACD();
+      DrawStochastic();
+      DrawADX();
+      DrawATR();
+      DrawOBV();
+      DrawMFI();
    }
    
    return rates_total;
@@ -1211,4 +1223,600 @@ void DrawMarketStructure()
       ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_SOLID);
       ObjectSetInteger(0, name, OBJPROP_WIDTH, 2);
    }
+}
+
+//+------------------------------------------------------------------+
+//| Draw technical indicators                                        |
+//+------------------------------------------------------------------+
+void DrawTechnicalIndicators()
+{
+   // Get price data
+   double opens[], highs[], lows[], closes[];
+   ArrayResize(opens, 100);
+   ArrayResize(highs, 100);
+   ArrayResize(lows, 100);
+   ArrayResize(closes, 100);
+   
+   CopyOpen(_Symbol, PERIOD_CURRENT, 1, 100, opens);
+   CopyHigh(_Symbol, PERIOD_CURRENT, 1, 100, highs);
+   CopyLow(_Symbol, PERIOD_CURRENT, 1, 100, lows);
+   CopyClose(_Symbol, PERIOD_CURRENT, 1, 100, closes);
+   
+   // Calculate indicators
+   double rsi[], macd[], signal[], histogram[];
+   double stoch_k[], stoch_d[];
+   double adx[], di_plus[], di_minus[];
+   double atr[];
+   double obv[];
+   double mfi[];
+   
+   ArrayResize(rsi, 100);
+   ArrayResize(macd, 100);
+   ArrayResize(signal, 100);
+   ArrayResize(histogram, 100);
+   ArrayResize(stoch_k, 100);
+   ArrayResize(stoch_d, 100);
+   ArrayResize(adx, 100);
+   ArrayResize(di_plus, 100);
+   ArrayResize(di_minus, 100);
+   ArrayResize(atr, 100);
+   ArrayResize(obv, 100);
+   ArrayResize(mfi, 100);
+   
+   // Calculate RSI
+   for(int i = 0; i < ArraySize(rsi); i++)
+   {
+      double gain = 0, loss = 0;
+      for(int j = i; j < i + 14 && j < ArraySize(closes); j++)
+      {
+         if(closes[j] > closes[j-1])
+            gain += closes[j] - closes[j-1];
+         else
+            loss += closes[j-1] - closes[j];
+      }
+      rsi[i] = 100 - (100 / (1 + gain/loss));
+   }
+   
+   // Calculate MACD
+   double ema12[], ema26[];
+   ArrayResize(ema12, 100);
+   ArrayResize(ema26, 100);
+   
+   for(int i = 0; i < ArraySize(ema12); i++)
+   {
+      ema12[i] = iMA(_Symbol, PERIOD_CURRENT, 12, 0, MODE_EMA, PRICE_CLOSE, i);
+      ema26[i] = iMA(_Symbol, PERIOD_CURRENT, 26, 0, MODE_EMA, PRICE_CLOSE, i);
+      macd[i] = ema12[i] - ema26[i];
+      signal[i] = iMAOnArray(macd, 0, 9, 0, MODE_EMA, i);
+      histogram[i] = macd[i] - signal[i];
+   }
+   
+   // Calculate Stochastic
+   for(int i = 0; i < ArraySize(stoch_k); i++)
+   {
+      double highest_high = highs[ArrayMaximum(highs, i, 14)];
+      double lowest_low = lows[ArrayMinimum(lows, i, 14)];
+      stoch_k[i] = 100 * (closes[i] - lowest_low) / (highest_high - lowest_low);
+      stoch_d[i] = iMAOnArray(stoch_k, 0, 3, 0, MODE_SMA, i);
+   }
+   
+   // Calculate ADX
+   for(int i = 0; i < ArraySize(adx); i++)
+   {
+      double tr = MathMax(highs[i] - lows[i], MathMax(MathAbs(highs[i] - closes[i-1]), MathAbs(lows[i] - closes[i-1])));
+      double plus_dm = highs[i] - highs[i-1];
+      double minus_dm = lows[i-1] - lows[i];
+      
+      if(plus_dm < 0) plus_dm = 0;
+      if(minus_dm < 0) minus_dm = 0;
+      if(plus_dm < minus_dm) plus_dm = 0;
+      if(minus_dm < plus_dm) minus_dm = 0;
+      
+      di_plus[i] = 100 * iMAOnArray(&plus_dm, 0, 14, 0, MODE_EMA, i) / iMAOnArray(&tr, 0, 14, 0, MODE_EMA, i);
+      di_minus[i] = 100 * iMAOnArray(&minus_dm, 0, 14, 0, MODE_EMA, i) / iMAOnArray(&tr, 0, 14, 0, MODE_EMA, i);
+      adx[i] = 100 * MathAbs(di_plus[i] - di_minus[i]) / (di_plus[i] + di_minus[i]);
+   }
+   
+   // Calculate ATR
+   for(int i = 0; i < ArraySize(atr); i++)
+   {
+      double tr = MathMax(highs[i] - lows[i], MathMax(MathAbs(highs[i] - closes[i-1]), MathAbs(lows[i] - closes[i-1])));
+      atr[i] = iMAOnArray(&tr, 0, 14, 0, MODE_SMA, i);
+   }
+   
+   // Calculate OBV
+   obv[0] = volume[0];
+   for(int i = 1; i < ArraySize(obv); i++)
+   {
+      if(closes[i] > closes[i-1])
+         obv[i] = obv[i-1] + volume[i];
+      else if(closes[i] < closes[i-1])
+         obv[i] = obv[i-1] - volume[i];
+      else
+         obv[i] = obv[i-1];
+   }
+   
+   // Calculate MFI
+   for(int i = 0; i < ArraySize(mfi); i++)
+   {
+      double typical_price = (highs[i] + lows[i] + closes[i]) / 3;
+      double money_flow = typical_price * volume[i];
+      
+      double positive_flow = 0, negative_flow = 0;
+      for(int j = i; j < i + 14 && j < ArraySize(closes); j++)
+      {
+         if(typical_price > (highs[j-1] + lows[j-1] + closes[j-1]) / 3)
+            positive_flow += money_flow;
+         else
+            negative_flow += money_flow;
+      }
+      
+      mfi[i] = 100 - (100 / (1 + positive_flow/negative_flow));
+   }
+   
+   // Draw indicators
+   DrawIndicator("RSI", rsi, clrRed);
+   DrawIndicator("MACD", macd, clrBlue);
+   DrawIndicator("Signal", signal, clrOrange);
+   DrawIndicator("Histogram", histogram, clrGreen);
+   DrawIndicator("Stoch_K", stoch_k, clrBlue);
+   DrawIndicator("Stoch_D", stoch_d, clrRed);
+   DrawIndicator("ADX", adx, clrPurple);
+   DrawIndicator("DI+", di_plus, clrGreen);
+   DrawIndicator("DI-", di_minus, clrRed);
+   DrawIndicator("ATR", atr, clrOrange);
+   DrawIndicator("OBV", obv, clrBlue);
+   DrawIndicator("MFI", mfi, clrPurple);
+}
+
+//+------------------------------------------------------------------+
+//| Draw indicator                                                    |
+//+------------------------------------------------------------------+
+void DrawIndicator(string name, double &values[], color clr)
+{
+   for(int i = 0; i < ArraySize(values); i++)
+   {
+      string obj_name = PREFIX_IND + name + IntegerToString(i);
+      ObjectCreate(0, obj_name, OBJ_TREND, 0, 
+                  TimeCurrent() - (ArraySize(values) - i) * PeriodSeconds(PERIOD_CURRENT),
+                  values[i],
+                  TimeCurrent() - (ArraySize(values) - i - 1) * PeriodSeconds(PERIOD_CURRENT),
+                  values[i+1]);
+      
+      ObjectSetInteger(0, obj_name, OBJPROP_COLOR, clr);
+      ObjectSetInteger(0, obj_name, OBJPROP_STYLE, STYLE_SOLID);
+      ObjectSetInteger(0, obj_name, OBJPROP_WIDTH, 1);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Draw Fibonacci levels                                             |
+//+------------------------------------------------------------------+
+void DrawFibonacciLevels()
+{
+   // Get price data
+   double highs[], lows[];
+   ArrayResize(highs, 100);
+   ArrayResize(lows, 100);
+   
+   CopyHigh(_Symbol, PERIOD_CURRENT, 1, 100, highs);
+   CopyLow(_Symbol, PERIOD_CURRENT, 1, 100, lows);
+   
+   double highest_high = highs[ArrayMaximum(highs, 0, ArraySize(highs))];
+   double lowest_low = lows[ArrayMinimum(lows, 0, ArraySize(lows))];
+   double range = highest_high - lowest_low;
+   
+   // Draw Fibonacci levels
+   double levels[] = {0, 0.236, 0.382, 0.5, 0.618, 0.786, 1};
+   color colors[] = {clrRed, clrOrange, clrYellow, clrGreen, clrBlue, clrPurple, clrRed};
+   
+   for(int i = 0; i < ArraySize(levels); i++)
+   {
+      string name = PREFIX_FIB + DoubleToString(levels[i], 3);
+      double level = lowest_low + range * levels[i];
+      
+      ObjectCreate(0, name, OBJ_TREND, 0, 
+                  TimeCurrent() - 100 * PeriodSeconds(PERIOD_CURRENT),
+                  level,
+                  TimeCurrent(),
+                  level);
+      
+      ObjectSetInteger(0, name, OBJPROP_COLOR, colors[i]);
+      ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_DASH);
+      ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Draw pivot points                                                 |
+//+------------------------------------------------------------------+
+void DrawPivotPoints()
+{
+   // Get price data
+   double opens[], highs[], lows[], closes[];
+   ArrayResize(opens, 1);
+   ArrayResize(highs, 1);
+   ArrayResize(lows, 1);
+   ArrayResize(closes, 1);
+   
+   CopyOpen(_Symbol, PERIOD_CURRENT, 1, 1, opens);
+   CopyHigh(_Symbol, PERIOD_CURRENT, 1, 1, highs);
+   CopyLow(_Symbol, PERIOD_CURRENT, 1, 1, lows);
+   CopyClose(_Symbol, PERIOD_CURRENT, 1, 1, closes);
+   
+   // Calculate pivot points
+   double pp = (highs[0] + lows[0] + closes[0]) / 3;
+   double r1 = 2 * pp - lows[0];
+   double s1 = 2 * pp - highs[0];
+   double r2 = pp + (highs[0] - lows[0]);
+   double s2 = pp - (highs[0] - lows[0]);
+   double r3 = highs[0] + 2 * (pp - lows[0]);
+   double s3 = lows[0] - 2 * (highs[0] - pp);
+   
+   // Draw pivot points
+   double levels[] = {s3, s2, s1, pp, r1, r2, r3};
+   string names[] = {"S3", "S2", "S1", "PP", "R1", "R2", "R3"};
+   color colors[] = {clrRed, clrOrange, clrYellow, clrGreen, clrBlue, clrPurple, clrRed};
+   
+   for(int i = 0; i < ArraySize(levels); i++)
+   {
+      string name = PREFIX_PIVOT + names[i];
+      ObjectCreate(0, name, OBJ_TREND, 0, 
+                  TimeCurrent() - PeriodSeconds(PERIOD_CURRENT),
+                  levels[i],
+                  TimeCurrent(),
+                  levels[i]);
+      
+      ObjectSetInteger(0, name, OBJPROP_COLOR, colors[i]);
+      ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_DASH);
+      ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Draw Ichimoku Cloud                                              |
+//+------------------------------------------------------------------+
+void DrawIchimokuCloud()
+{
+   // Get price data
+   double highs[], lows[], closes[];
+   ArrayResize(highs, 100);
+   ArrayResize(lows, 100);
+   ArrayResize(closes, 100);
+   
+   CopyHigh(_Symbol, PERIOD_CURRENT, 1, 100, highs);
+   CopyLow(_Symbol, PERIOD_CURRENT, 1, 100, lows);
+   CopyClose(_Symbol, PERIOD_CURRENT, 1, 100, closes);
+   
+   // Calculate Ichimoku components
+   double tenkan_sen[], kijun_sen[], senkou_span_a[], senkou_span_b[];
+   ArrayResize(tenkan_sen, 100);
+   ArrayResize(kijun_sen, 100);
+   ArrayResize(senkou_span_a, 100);
+   ArrayResize(senkou_span_b, 100);
+   
+   for(int i = 0; i < ArraySize(tenkan_sen); i++)
+   {
+      // Tenkan-sen (Conversion Line)
+      double highest_high = highs[ArrayMaximum(highs, i, 9)];
+      double lowest_low = lows[ArrayMinimum(lows, i, 9)];
+      tenkan_sen[i] = (highest_high + lowest_low) / 2;
+      
+      // Kijun-sen (Base Line)
+      highest_high = highs[ArrayMaximum(highs, i, 26)];
+      lowest_low = lows[ArrayMinimum(lows, i, 26)];
+      kijun_sen[i] = (highest_high + lowest_low) / 2;
+      
+      // Senkou Span A (Leading Span A)
+      senkou_span_a[i] = (tenkan_sen[i] + kijun_sen[i]) / 2;
+      
+      // Senkou Span B (Leading Span B)
+      highest_high = highs[ArrayMaximum(highs, i, 52)];
+      lowest_low = lows[ArrayMinimum(lows, i, 52)];
+      senkou_span_b[i] = (highest_high + lowest_low) / 2;
+   }
+   
+   // Draw Ichimoku components
+   DrawIndicator("Tenkan", tenkan_sen, clrRed);
+   DrawIndicator("Kijun", kijun_sen, clrBlue);
+   DrawIndicator("SpanA", senkou_span_a, clrGreen);
+   DrawIndicator("SpanB", senkou_span_b, clrOrange);
+   
+   // Draw cloud
+   for(int i = 0; i < ArraySize(senkou_span_a); i++)
+   {
+      string name = PREFIX_CLOUD + IntegerToString(i);
+      color cloud_color = (senkou_span_a[i] > senkou_span_b[i]) ? clrGreen : clrRed;
+      
+      ObjectCreate(0, name, OBJ_RECTANGLE, 0, 
+                  TimeCurrent() - (ArraySize(senkou_span_a) - i) * PeriodSeconds(PERIOD_CURRENT),
+                  senkou_span_a[i],
+                  TimeCurrent() - (ArraySize(senkou_span_a) - i - 1) * PeriodSeconds(PERIOD_CURRENT),
+                  senkou_span_b[i]);
+      
+      ObjectSetInteger(0, name, OBJPROP_COLOR, cloud_color);
+      ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_SOLID);
+      ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
+      ObjectSetInteger(0, name, OBJPROP_FILL, true);
+      ObjectSetInteger(0, name, OBJPROP_BACK, true);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Draw Bollinger Bands                                             |
+//+------------------------------------------------------------------+
+void DrawBollingerBands()
+{
+   // Get price data
+   double closes[];
+   ArrayResize(closes, 100);
+   CopyClose(_Symbol, PERIOD_CURRENT, 1, 100, closes);
+   
+   // Calculate Bollinger Bands
+   double middle_band[], upper_band[], lower_band[];
+   ArrayResize(middle_band, 100);
+   ArrayResize(upper_band, 100);
+   ArrayResize(lower_band, 100);
+   
+   for(int i = 0; i < ArraySize(middle_band); i++)
+   {
+      middle_band[i] = iMA(_Symbol, PERIOD_CURRENT, 20, 0, MODE_SMA, PRICE_CLOSE, i);
+      
+      double sum = 0;
+      for(int j = i; j < i + 20 && j < ArraySize(closes); j++)
+         sum += MathPow(closes[j] - middle_band[i], 2);
+      
+      double std_dev = MathSqrt(sum / 20);
+      upper_band[i] = middle_band[i] + 2 * std_dev;
+      lower_band[i] = middle_band[i] - 2 * std_dev;
+   }
+   
+   // Draw Bollinger Bands
+   DrawIndicator("Middle", middle_band, clrBlue);
+   DrawIndicator("Upper", upper_band, clrRed);
+   DrawIndicator("Lower", lower_band, clrGreen);
+}
+
+//+------------------------------------------------------------------+
+//| Draw RSI                                                        |
+//+------------------------------------------------------------------+
+void DrawRSI()
+{
+   // Get price data
+   double closes[];
+   ArrayResize(closes, 100);
+   CopyClose(_Symbol, PERIOD_CURRENT, 1, 100, closes);
+   
+   // Calculate RSI
+   double rsi[];
+   ArrayResize(rsi, 100);
+   
+   for(int i = 0; i < ArraySize(rsi); i++)
+   {
+      double gain = 0, loss = 0;
+      for(int j = i; j < i + 14 && j < ArraySize(closes); j++)
+      {
+         if(closes[j] > closes[j-1])
+            gain += closes[j] - closes[j-1];
+         else
+            loss += closes[j-1] - closes[j];
+      }
+      rsi[i] = 100 - (100 / (1 + gain/loss));
+   }
+   
+   // Draw RSI
+   DrawIndicator("RSI", rsi, clrRed);
+}
+
+//+------------------------------------------------------------------+
+//| Draw MACD                                                        |
+//+------------------------------------------------------------------+
+void DrawMACD()
+{
+   // Get price data
+   double closes[];
+   ArrayResize(closes, 100);
+   CopyClose(_Symbol, PERIOD_CURRENT, 1, 100, closes);
+   
+   // Calculate MACD
+   double macd[], signal[];
+   ArrayResize(macd, 100);
+   ArrayResize(signal, 100);
+   
+   for(int i = 0; i < ArraySize(macd); i++)
+   {
+      double ema12 = iMA(_Symbol, PERIOD_CURRENT, 12, 0, MODE_EMA, PRICE_CLOSE, i);
+      double ema26 = iMA(_Symbol, PERIOD_CURRENT, 26, 0, MODE_EMA, PRICE_CLOSE, i);
+      macd[i] = ema12 - ema26;
+   }
+   
+   for(int i = 0; i < ArraySize(signal); i++)
+   {
+      double ema9 = iMA(_Symbol, PERIOD_CURRENT, 9, 0, MODE_EMA, PRICE_CLOSE, i);
+      signal[i] = ema9;
+   }
+   
+   // Draw MACD
+   DrawIndicator("MACD", macd, clrBlue);
+   DrawIndicator("Signal", signal, clrOrange);
+}
+
+//+------------------------------------------------------------------+
+//| Draw Stochastic                                                 |
+//+------------------------------------------------------------------+
+void DrawStochastic()
+{
+   // Get price data
+   double highs[], lows[], closes[];
+   ArrayResize(highs, 100);
+   ArrayResize(lows, 100);
+   ArrayResize(closes, 100);
+   
+   CopyHigh(_Symbol, PERIOD_CURRENT, 1, 100, highs);
+   CopyLow(_Symbol, PERIOD_CURRENT, 1, 100, lows);
+   CopyClose(_Symbol, PERIOD_CURRENT, 1, 100, closes);
+   
+   // Calculate Stochastic
+   double stoch_k[], stoch_d[];
+   ArrayResize(stoch_k, 100);
+   ArrayResize(stoch_d, 100);
+   
+   for(int i = 0; i < ArraySize(stoch_k); i++)
+   {
+      double highest_high = highs[ArrayMaximum(highs, i, 14)];
+      double lowest_low = lows[ArrayMinimum(lows, i, 14)];
+      stoch_k[i] = 100 * (closes[i] - lowest_low) / (highest_high - lowest_low);
+   }
+   
+   for(int i = 0; i < ArraySize(stoch_d); i++)
+   {
+      double ema3 = iMA(_Symbol, PERIOD_CURRENT, 3, 0, MODE_EMA, PRICE_CLOSE, i);
+      stoch_d[i] = iMAOnArray(stoch_k, 0, 3, 0, MODE_SMA, i);
+   }
+   
+   // Draw Stochastic
+   DrawIndicator("Stoch_K", stoch_k, clrBlue);
+   DrawIndicator("Stoch_D", stoch_d, clrRed);
+}
+
+//+------------------------------------------------------------------+
+//| Draw ADX                                                          |
+//+------------------------------------------------------------------+
+void DrawADX()
+{
+   // Get price data
+   double highs[], lows[], closes[];
+   ArrayResize(highs, 100);
+   ArrayResize(lows, 100);
+   ArrayResize(closes, 100);
+   
+   CopyHigh(_Symbol, PERIOD_CURRENT, 1, 100, highs);
+   CopyLow(_Symbol, PERIOD_CURRENT, 1, 100, lows);
+   CopyClose(_Symbol, PERIOD_CURRENT, 1, 100, closes);
+   
+   // Calculate ADX
+   double adx[];
+   ArrayResize(adx, 100);
+   
+   for(int i = 0; i < ArraySize(adx); i++)
+   {
+      double tr = MathMax(highs[i] - lows[i], MathMax(MathAbs(highs[i] - closes[i-1]), MathAbs(lows[i] - closes[i-1])));
+      double plus_dm = highs[i] - highs[i-1];
+      double minus_dm = lows[i-1] - lows[i];
+      
+      if(plus_dm < 0) plus_dm = 0;
+      if(minus_dm < 0) minus_dm = 0;
+      if(plus_dm < minus_dm) plus_dm = 0;
+      if(minus_dm < plus_dm) minus_dm = 0;
+      
+      double di_plus = 100 * iMAOnArray(&plus_dm, 0, 14, 0, MODE_EMA, i) / iMAOnArray(&tr, 0, 14, 0, MODE_EMA, i);
+      double di_minus = 100 * iMAOnArray(&minus_dm, 0, 14, 0, MODE_EMA, i) / iMAOnArray(&tr, 0, 14, 0, MODE_EMA, i);
+      double sum = di_plus + di_minus;
+      adx[i] = 100 * MathAbs(di_plus - di_minus) / sum;
+   }
+   
+   // Draw ADX
+   DrawIndicator("ADX", adx, clrPurple);
+}
+
+//+------------------------------------------------------------------+
+//| Draw ATR                                                          |
+//+------------------------------------------------------------------+
+void DrawATR()
+{
+   // Get price data
+   double highs[], lows[], closes[];
+   ArrayResize(highs, 100);
+   ArrayResize(lows, 100);
+   ArrayResize(closes, 100);
+   
+   CopyHigh(_Symbol, PERIOD_CURRENT, 1, 100, highs);
+   CopyLow(_Symbol, PERIOD_CURRENT, 1, 100, lows);
+   CopyClose(_Symbol, PERIOD_CURRENT, 1, 100, closes);
+   
+   // Calculate ATR
+   double atr[];
+   ArrayResize(atr, 100);
+   
+   for(int i = 0; i < ArraySize(atr); i++)
+   {
+      double tr = MathMax(highs[i] - lows[i], MathMax(MathAbs(highs[i] - closes[i-1]), MathAbs(lows[i] - closes[i-1])));
+      atr[i] = iMAOnArray(&tr, 0, 14, 0, MODE_SMA, i);
+   }
+   
+   // Draw ATR
+   DrawIndicator("ATR", atr, clrOrange);
+}
+
+//+------------------------------------------------------------------+
+//| Draw OBV                                                          |
+//+------------------------------------------------------------------+
+void DrawOBV()
+{
+   // Get price data
+   double closes[], volumes[];
+   ArrayResize(closes, 100);
+   ArrayResize(volumes, 100);
+   CopyClose(_Symbol, PERIOD_CURRENT, 1, 100, closes);
+   CopyTickVolume(_Symbol, PERIOD_CURRENT, 1, 100, volumes);
+   
+   // Calculate OBV
+   double obv[];
+   ArrayResize(obv, 100);
+   
+   obv[0] = volumes[0];
+   for(int i = 1; i < ArraySize(obv); i++)
+   {
+      if(closes[i] > closes[i-1])
+         obv[i] = obv[i-1] + volumes[i];
+      else if(closes[i] < closes[i-1])
+         obv[i] = obv[i-1] - volumes[i];
+      else
+         obv[i] = obv[i-1];
+   }
+   
+   // Draw OBV
+   DrawIndicator("OBV", obv, clrBlue);
+}
+
+//+------------------------------------------------------------------+
+//| Draw MFI                                                          |
+//+------------------------------------------------------------------+
+void DrawMFI()
+{
+   // Get price data
+   double highs[], lows[], closes[], volumes[];
+   ArrayResize(highs, 100);
+   ArrayResize(lows, 100);
+   ArrayResize(closes, 100);
+   ArrayResize(volumes, 100);
+   
+   CopyHigh(_Symbol, PERIOD_CURRENT, 1, 100, highs);
+   CopyLow(_Symbol, PERIOD_CURRENT, 1, 100, lows);
+   CopyClose(_Symbol, PERIOD_CURRENT, 1, 100, closes);
+   CopyTickVolume(_Symbol, PERIOD_CURRENT, 1, 100, volumes);
+   
+   // Calculate MFI
+   double mfi[];
+   ArrayResize(mfi, 100);
+   
+   for(int i = 0; i < ArraySize(mfi); i++)
+   {
+      double typical_price = (highs[i] + lows[i] + closes[i]) / 3;
+      double money_flow = typical_price * volumes[i];
+      
+      double positive_flow = 0, negative_flow = 0;
+      for(int j = i; j < i + 14 && j < ArraySize(closes); j++)
+      {
+         if(typical_price > (highs[j-1] + lows[j-1] + closes[j-1]) / 3)
+            positive_flow += money_flow;
+         else
+            negative_flow += money_flow;
+      }
+      
+      mfi[i] = 100 - (100 / (1 + positive_flow/negative_flow));
+   }
+   
+   // Draw MFI
+   DrawIndicator("MFI", mfi, clrPurple);
 } 

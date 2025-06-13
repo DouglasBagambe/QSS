@@ -1,15 +1,56 @@
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from pydantic import BaseModel, Field
 
 class MarketStructure(BaseModel):
     """Market structure analysis"""
-    trend: str
-    strength: float
-    support_levels: List[float]
-    resistance_levels: List[float]
-    breakouts: List[Dict[str, any]]
-    last_update: datetime = Field(default_factory=datetime.now)
+    model_config = {
+        "arbitrary_types_allowed": True
+    }
+    
+    trend: str = Field(..., description="Current market trend")
+    strength: float = Field(..., description="Trend strength")
+    support_levels: List[float] = Field(default_factory=list, description="Support price levels")
+    resistance_levels: List[float] = Field(default_factory=list, description="Resistance price levels")
+    breakouts: List[Dict[str, Any]] = Field(default_factory=list, description="Price breakouts")
+    patterns: List[str] = Field(default_factory=list, description="Detected chart patterns")
+    volume_profile: Dict[str, Any] = Field(default_factory=dict, description="Volume profile analysis")
+    market_profile: Dict[str, Any] = Field(default_factory=dict, description="Market profile analysis")
+    order_flow: Dict[str, Any] = Field(default_factory=dict, description="Order flow analysis")
+    wave_structure: Optional[str] = Field(None, description="Elliott wave structure")
+    harmonic_patterns: List[str] = Field(default_factory=list, description="Detected harmonic patterns")
+    divergences: List[str] = Field(default_factory=list, description="Detected divergences")
+    last_update: datetime = Field(default_factory=datetime.now, description="Last update timestamp")
+
+class MarketAnalysis(BaseModel):
+    """Market analysis data"""
+    model_config = {
+        "arbitrary_types_allowed": True
+    }
+    
+    symbol: str = Field(..., description="Trading symbol")
+    timeframe: str = Field(..., description="Analysis timeframe")
+    structure: MarketStructure = Field(..., description="Market structure analysis")
+    indicators: Dict[str, Any] = Field(default_factory=dict, description="Technical indicators")
+    signals: List[str] = Field(default_factory=list, description="Trading signals")
+    timestamp: datetime = Field(default_factory=datetime.now, description="Analysis timestamp")
+
+class Signal(BaseModel):
+    """Trading signal"""
+    model_config = {
+        "arbitrary_types_allowed": True
+    }
+    
+    symbol: str = Field(..., description="Trading symbol")
+    direction: str = Field(..., description="Signal direction (BUY/SELL)")
+    entry_price: float = Field(..., description="Entry price")
+    stop_loss: float = Field(..., description="Stop loss price")
+    take_profit: float = Field(..., description="Take profit price")
+    timeframe: str = Field(..., description="Signal timeframe")
+    pattern: Optional[str] = Field(None, description="Triggering pattern")
+    confidence: float = Field(..., description="Signal confidence (0-1)")
+    timestamp: datetime = Field(default_factory=datetime.now, description="Signal timestamp")
+    analysis: Optional[MarketAnalysis] = Field(None, description="Market analysis")
 
 class TechnicalIndicators(BaseModel):
     """Technical indicators data"""
