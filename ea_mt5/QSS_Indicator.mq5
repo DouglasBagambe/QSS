@@ -33,6 +33,7 @@ int g_updateInterval = 300; // 5 minutes
 #define PREFIX_FIB "FIB_"      // Fibonacci
 #define PREFIX_PIVOT "PIV_"    // Pivot Points
 #define PREFIX_CLOUD "CLD_"    // Ichimoku Cloud
+#define PREFIX_MS "MS_"        // Market Structure
 
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
@@ -1301,7 +1302,7 @@ void DrawTechnicalIndicators()
       ema12[i] = iMA(_Symbol, PERIOD_CURRENT, 12, 0, MODE_EMA, PRICE_CLOSE, i);
       ema26[i] = iMA(_Symbol, PERIOD_CURRENT, 26, 0, MODE_EMA, PRICE_CLOSE, i);
       macd[i] = ema12[i] - ema26[i];
-      signal[i] = iMAOnArray(macd, 0, 9, 0, MODE_EMA, i);
+      signal[i] = iMA(_Symbol, PERIOD_CURRENT, 9, 0, MODE_EMA, PRICE_CLOSE, i);
       histogram[i] = macd[i] - signal[i];
    }
    
@@ -1311,7 +1312,7 @@ void DrawTechnicalIndicators()
       double highest_high = highs[ArrayMaximum(highs, i, 14)];
       double lowest_low = lows[ArrayMinimum(lows, i, 14)];
       stoch_k[i] = 100 * (closes[i] - lowest_low) / (highest_high - lowest_low);
-      stoch_d[i] = iMAOnArray(stoch_k, 0, 3, 0, MODE_SMA, i);
+      stoch_d[i] = iMA(_Symbol, PERIOD_CURRENT, 3, 0, MODE_SMA, PRICE_CLOSE, i);
    }
    
    // Calculate ADX
@@ -1326,8 +1327,8 @@ void DrawTechnicalIndicators()
       if(plus_dm < minus_dm) plus_dm = 0;
       if(minus_dm < plus_dm) minus_dm = 0;
       
-      di_plus[i] = 100 * iMAOnArray(&plus_dm, 0, 14, 0, MODE_EMA, i) / iMAOnArray(&tr, 0, 14, 0, MODE_EMA, i);
-      di_minus[i] = 100 * iMAOnArray(&minus_dm, 0, 14, 0, MODE_EMA, i) / iMAOnArray(&tr, 0, 14, 0, MODE_EMA, i);
+      di_plus[i] = 100 * iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_EMA, PRICE_CLOSE, i);
+      di_minus[i] = 100 * iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_EMA, PRICE_CLOSE, i);
       adx[i] = 100 * MathAbs(di_plus[i] - di_minus[i]) / (di_plus[i] + di_minus[i]);
    }
    
@@ -1335,17 +1336,17 @@ void DrawTechnicalIndicators()
    for(int i = 0; i < ArraySize(atr); i++)
    {
       double tr = MathMax(highs[i] - lows[i], MathMax(MathAbs(highs[i] - closes[i-1]), MathAbs(lows[i] - closes[i-1])));
-      atr[i] = iMAOnArray(&tr, 0, 14, 0, MODE_SMA, i);
+      atr[i] = iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_SMA, PRICE_CLOSE, i);
    }
    
    // Calculate OBV
-   obv[0] = volume[0];
+   obv[0] = (double)volume[0];
    for(int i = 1; i < ArraySize(obv); i++)
    {
       if(closes[i] > closes[i-1])
-         obv[i] = obv[i-1] + volume[i];
+         obv[i] = obv[i-1] + (double)volume[i];
       else if(closes[i] < closes[i-1])
-         obv[i] = obv[i-1] - volume[i];
+         obv[i] = obv[i-1] - (double)volume[i];
       else
          obv[i] = obv[i-1];
    }
@@ -1354,7 +1355,7 @@ void DrawTechnicalIndicators()
    for(int i = 0; i < ArraySize(mfi); i++)
    {
       double typical_price = (highs[i] + lows[i] + closes[i]) / 3;
-      double money_flow = typical_price * volume[i];
+      double money_flow = typical_price * (double)volume[i];
       
       double positive_flow = 0, negative_flow = 0;
       for(int j = i; j < i + 14 && j < ArraySize(closes); j++)

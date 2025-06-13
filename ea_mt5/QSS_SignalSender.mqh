@@ -1140,7 +1140,7 @@ void SendMarketUpdate()
 }
 
 //+------------------------------------------------------------------+
-//| Fix pattern recognition functions                                 |
+//| Pattern recognition functions                                     |
 //+------------------------------------------------------------------+
 bool IsGartleyPattern(const double &highs[], const double &lows[], int start_idx)
 {
@@ -1157,6 +1157,21 @@ bool IsGartleyPattern(const double &highs[], const double &lows[], int start_idx
           (xad >= 0.786 && xad <= 0.886);
 }
 
+bool IsButterflyPattern(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 4) return false;
+   
+   double xab = MathAbs(highs[start_idx-1] - lows[start_idx-2]) / MathAbs(highs[start_idx-2] - lows[start_idx-3]);
+   double abc = MathAbs(lows[start_idx-1] - highs[start_idx]) / MathAbs(highs[start_idx-1] - lows[start_idx-2]);
+   double bcd = MathAbs(highs[start_idx] - lows[start_idx+1]) / MathAbs(lows[start_idx-1] - highs[start_idx]);
+   double xad = MathAbs(highs[start_idx-1] - lows[start_idx+1]) / MathAbs(highs[start_idx-2] - lows[start_idx-3]);
+   
+   return (xab >= 0.786 && xab <= 0.886) &&
+          (abc >= 0.382 && abc <= 0.886) &&
+          (bcd >= 1.618 && bcd <= 2.618) &&
+          (xad >= 1.27 && xad <= 1.618);
+}
+
 bool IsDoubleTop(const double &highs[], const double &lows[], int start_idx)
 {
    if(start_idx < 2) return false;
@@ -1167,6 +1182,18 @@ bool IsDoubleTop(const double &highs[], const double &lows[], int start_idx)
    
    return MathAbs(first_high - second_high) / first_high < 0.01 &&
           second_high > neckline;
+}
+
+bool IsDoubleBottom(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 2) return false;
+   
+   double first_low = lows[start_idx-2];
+   double second_low = lows[start_idx];
+   double neckline = highs[start_idx-1];
+   
+   return MathAbs(first_low - second_low) / first_low < 0.01 &&
+          second_low < neckline;
 }
 
 bool IsTripleTop(const double &highs[], const double &lows[], int start_idx)
@@ -1183,6 +1210,20 @@ bool IsTripleTop(const double &highs[], const double &lows[], int start_idx)
           third_high > neckline;
 }
 
+bool IsTripleBottom(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 4) return false;
+   
+   double first_low = lows[start_idx-4];
+   double second_low = lows[start_idx-2];
+   double third_low = lows[start_idx];
+   double neckline = highs[start_idx-1];
+   
+   return MathAbs(first_low - second_low) / first_low < 0.01 &&
+          MathAbs(second_low - third_low) / second_low < 0.01 &&
+          third_low < neckline;
+}
+
 bool IsHeadAndShoulders(const double &highs[], const double &lows[], int start_idx)
 {
    if(start_idx < 4) return false;
@@ -1197,6 +1238,20 @@ bool IsHeadAndShoulders(const double &highs[], const double &lows[], int start_i
           head > neckline;
 }
 
+bool IsInverseHeadAndShoulders(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 4) return false;
+   
+   double left_shoulder = lows[start_idx-4];
+   double head = lows[start_idx-2];
+   double right_shoulder = lows[start_idx];
+   double neckline = highs[start_idx-1];
+   
+   return head < left_shoulder && head < right_shoulder &&
+          MathAbs(left_shoulder - right_shoulder) / left_shoulder < 0.01 &&
+          head < neckline;
+}
+
 bool IsAscendingTriangle(const double &highs[], const double &lows[], int start_idx)
 {
    if(start_idx < 4) return false;
@@ -1208,6 +1263,17 @@ bool IsAscendingTriangle(const double &highs[], const double &lows[], int start_
           slope > 0;
 }
 
+bool IsDescendingTriangle(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 4) return false;
+   
+   double support = lows[start_idx-4];
+   double slope = (highs[start_idx] - highs[start_idx-4]) / (start_idx - (start_idx-4));
+   
+   return MathAbs(lows[start_idx] - support) / support < 0.01 &&
+          slope < 0;
+}
+
 bool IsRisingWedge(const double &highs[], const double &lows[], int start_idx)
 {
    if(start_idx < 4) return false;
@@ -1216,6 +1282,16 @@ bool IsRisingWedge(const double &highs[], const double &lows[], int start_idx)
    double lower_slope = (lows[start_idx] - lows[start_idx-4]) / (start_idx - (start_idx-4));
    
    return upper_slope > 0 && lower_slope > 0 && upper_slope < lower_slope;
+}
+
+bool IsFallingWedge(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 4) return false;
+   
+   double upper_slope = (highs[start_idx] - highs[start_idx-4]) / (start_idx - (start_idx-4));
+   double lower_slope = (lows[start_idx] - lows[start_idx-4]) / (start_idx - (start_idx-4));
+   
+   return upper_slope < 0 && lower_slope < 0 && upper_slope > lower_slope;
 }
 
 bool IsBullFlag(const double &highs[], const double &lows[], int start_idx)
@@ -1232,6 +1308,20 @@ bool IsBullFlag(const double &highs[], const double &lows[], int start_idx)
           flag_low > pole_low;
 }
 
+bool IsBearFlag(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 4) return false;
+   
+   double pole_high = highs[start_idx-4];
+   double pole_low = lows[start_idx-4];
+   double flag_high = highs[start_idx];
+   double flag_low = lows[start_idx];
+   
+   return pole_high < pole_low &&
+          flag_high > pole_high &&
+          flag_low < pole_low;
+}
+
 bool IsBullPennant(const double &highs[], const double &lows[], int start_idx)
 {
    if(start_idx < 4) return false;
@@ -1244,6 +1334,21 @@ bool IsBullPennant(const double &highs[], const double &lows[], int start_idx)
    return pole_high > pole_low &&
           pennant_high < pole_high &&
           pennant_low > pole_low &&
+          (pennant_high - pennant_low) < (pole_high - pole_low);
+}
+
+bool IsBearPennant(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 4) return false;
+   
+   double pole_high = highs[start_idx-4];
+   double pole_low = lows[start_idx-4];
+   double pennant_high = highs[start_idx];
+   double pennant_low = lows[start_idx];
+   
+   return pole_high < pole_low &&
+          pennant_high > pole_high &&
+          pennant_low < pole_low &&
           (pennant_high - pennant_low) < (pole_high - pole_low);
 }
 
