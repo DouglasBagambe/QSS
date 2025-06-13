@@ -9,7 +9,7 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 from aiohttp import web
 import os
 
-from .config import Config
+from .config import config
 from .handlers import (
     register_handlers,
     register_advanced_handlers,
@@ -31,7 +31,7 @@ async def on_startup(bot: Bot) -> None:
     logger.info("Starting bot...")
     
     # Validate bot token
-    if not validate_token(Config.BOT_TOKEN):
+    if not validate_token(config.BOT_TOKEN):
         logger.error("Invalid bot token!")
         return
     
@@ -60,7 +60,7 @@ async def main() -> None:
     """Main function to start the bot"""
     try:
         # Initialize bot and dispatcher
-        bot = Bot(token=Config.BOT_TOKEN, parse_mode=ParseMode.HTML)
+        bot = Bot(token=config.BOT_TOKEN, parse_mode=ParseMode.HTML)
         dp = Dispatcher()
         
         # Register handlers and middleware
