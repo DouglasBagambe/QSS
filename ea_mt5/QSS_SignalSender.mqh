@@ -1400,4 +1400,100 @@ bool IsSymmetricalTriangle(const double &highs[], const double &lows[], int star
    
    return MathAbs(upper_slope) < 0.1 && MathAbs(lower_slope) < 0.1 &&
           upper_slope < 0 && lower_slope > 0;
+}
+
+bool IsCrabPattern(const double &highs[], const double &lows[], int start_idx)
+{
+   if(start_idx < 4) return false;
+   
+   double xab = MathAbs(highs[start_idx-1] - lows[start_idx-2]) / MathAbs(highs[start_idx-2] - lows[start_idx-3]);
+   double abc = MathAbs(lows[start_idx-1] - highs[start_idx]) / MathAbs(highs[start_idx-1] - lows[start_idx-2]);
+   double bcd = MathAbs(highs[start_idx] - lows[start_idx+1]) / MathAbs(lows[start_idx-1] - highs[start_idx]);
+   double xad = MathAbs(highs[start_idx-1] - lows[start_idx+1]) / MathAbs(highs[start_idx-2] - lows[start_idx-3]);
+   
+   return (xab >= 0.382 && xab <= 0.618) &&
+          (abc >= 0.382 && abc <= 0.886) &&
+          (bcd >= 2.618 && bcd <= 3.618) &&
+          (xad >= 1.618 && xad <= 1.618);
+}
+
+//+------------------------------------------------------------------+
+//| Fix function calls                                               |
+//+------------------------------------------------------------------+
+void CheckPatterns()
+{
+   double highs[], lows[];
+   ArrayResize(highs, 100);
+   ArrayResize(lows, 100);
+   
+   CopyHigh(_Symbol, PERIOD_CURRENT, 1, 100, highs);
+   CopyLow(_Symbol, PERIOD_CURRENT, 1, 100, lows);
+   
+   // Check harmonic patterns
+   if(IsGartleyPattern(highs, lows, 0))
+      SendSignal("Gartley Pattern Detected");
+   else if(IsButterflyPattern(highs, lows, 0))
+      SendSignal("Butterfly Pattern Detected");
+   else if(IsBatPattern(highs, lows, 0))
+      SendSignal("Bat Pattern Detected");
+   else if(IsCrabPattern(highs, lows, 0))
+      SendSignal("Crab Pattern Detected");
+   
+   // Check chart patterns
+   if(IsDoubleTop(highs, lows, 0))
+      SendSignal("Double Top Detected");
+   else if(IsDoubleBottom(highs, lows, 0))
+      SendSignal("Double Bottom Detected");
+   else if(IsTripleTop(highs, lows, 0))
+      SendSignal("Triple Top Detected");
+   else if(IsTripleBottom(highs, lows, 0))
+      SendSignal("Triple Bottom Detected");
+   else if(IsHeadAndShoulders(highs, lows, 0))
+      SendSignal("Head and Shoulders Detected");
+   else if(IsInverseHeadAndShoulders(highs, lows, 0))
+      SendSignal("Inverse Head and Shoulders Detected");
+   else if(IsAscendingTriangle(highs, lows, 0))
+      SendSignal("Ascending Triangle Detected");
+   else if(IsDescendingTriangle(highs, lows, 0))
+      SendSignal("Descending Triangle Detected");
+   else if(IsSymmetricalTriangle(highs, lows, 0))
+      SendSignal("Symmetrical Triangle Detected");
+   else if(IsRisingWedge(highs, lows, 0))
+      SendSignal("Rising Wedge Detected");
+   else if(IsFallingWedge(highs, lows, 0))
+      SendSignal("Falling Wedge Detected");
+   else if(IsBullFlag(highs, lows, 0))
+      SendSignal("Bull Flag Detected");
+   else if(IsBearFlag(highs, lows, 0))
+      SendSignal("Bear Flag Detected");
+   else if(IsBullPennant(highs, lows, 0))
+      SendSignal("Bull Pennant Detected");
+   else if(IsBearPennant(highs, lows, 0))
+      SendSignal("Bear Pennant Detected");
+   
+   // Check divergences
+   double closes[], rsi[];
+   ArrayResize(closes, 100);
+   ArrayResize(rsi, 100);
+   
+   CopyClose(_Symbol, PERIOD_CURRENT, 1, 100, closes);
+   
+   // Calculate RSI
+   for(int i = 0; i < ArraySize(rsi); i++)
+   {
+      double gain = 0, loss = 0;
+      for(int j = i; j < i + 14 && j < ArraySize(closes); j++)
+      {
+         if(closes[j] > closes[j-1])
+            gain += closes[j] - closes[j-1];
+         else
+            loss += closes[j-1] - closes[j];
+      }
+      rsi[i] = 100 - (100 / (1 + gain/loss));
+   }
+   
+   if(IsBullishDivergence(closes, rsi, 0))
+      SendSignal("Bullish Divergence Detected");
+   else if(IsBearishDivergence(closes, rsi, 0))
+      SendSignal("Bearish Divergence Detected");
 } 

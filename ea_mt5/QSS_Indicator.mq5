@@ -1300,10 +1300,10 @@ void DrawTechnicalIndicators()
    
    for(int i = 0; i < ArraySize(ema12); i++)
    {
-      ema12[i] = iMA(_Symbol, PERIOD_CURRENT, 12, 0, MODE_EMA, PRICE_CLOSE);
-      ema26[i] = iMA(_Symbol, PERIOD_CURRENT, 26, 0, MODE_EMA, PRICE_CLOSE);
+      ema12[i] = iMA(_Symbol, PERIOD_CURRENT, 12, 0, MODE_EMA);
+      ema26[i] = iMA(_Symbol, PERIOD_CURRENT, 26, 0, MODE_EMA);
       macd[i] = ema12[i] - ema26[i];
-      signal[i] = iMA(_Symbol, PERIOD_CURRENT, 9, 0, MODE_EMA, PRICE_CLOSE);
+      signal[i] = iMA(_Symbol, PERIOD_CURRENT, 9, 0, MODE_EMA);
       histogram[i] = macd[i] - signal[i];
    }
    
@@ -1313,7 +1313,7 @@ void DrawTechnicalIndicators()
       double highest_high = highs[ArrayMaximum(highs, i, 14)];
       double lowest_low = lows[ArrayMinimum(lows, i, 14)];
       stoch_k[i] = 100 * (closes[i] - lowest_low) / (highest_high - lowest_low);
-      stoch_d[i] = iMA(_Symbol, PERIOD_CURRENT, 3, 0, MODE_SMA, PRICE_CLOSE);
+      stoch_d[i] = iMA(_Symbol, PERIOD_CURRENT, 3, 0, MODE_SMA);
    }
    
    // Calculate ADX
@@ -1328,8 +1328,8 @@ void DrawTechnicalIndicators()
       if(plus_dm < minus_dm) plus_dm = 0;
       if(minus_dm < plus_dm) minus_dm = 0;
       
-      di_plus[i] = 100 * iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_EMA, PRICE_CLOSE);
-      di_minus[i] = 100 * iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_EMA, PRICE_CLOSE);
+      di_plus[i] = 100 * iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_EMA);
+      di_minus[i] = 100 * iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_EMA);
       adx[i] = 100 * MathAbs(di_plus[i] - di_minus[i]) / (di_plus[i] + di_minus[i]);
    }
    
@@ -1337,7 +1337,7 @@ void DrawTechnicalIndicators()
    for(int i = 0; i < ArraySize(atr); i++)
    {
       double tr = MathMax(highs[i] - lows[i], MathMax(MathAbs(highs[i] - closes[i-1]), MathAbs(lows[i] - closes[i-1])));
-      atr[i] = iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_SMA, PRICE_CLOSE);
+      atr[i] = iMA(_Symbol, PERIOD_CURRENT, 14, 0, MODE_SMA);
    }
    
    // Calculate OBV
