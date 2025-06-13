@@ -29,4 +29,8 @@ class AuthMiddleware(BaseMiddleware):
                 )
             return
         
-        return await handler(event, data) 
+        return await handler(event, data)
+
+def register_middleware(dp):
+    """Register the auth middleware with the dispatcher"""
+    dp.update.middleware(AuthMiddleware()) 
